@@ -1032,7 +1032,7 @@ Models included in the training dataset:
 
             {text.length === 0 && !isDragging && (
               <div className="ghost-placeholder">
-                Paste or write at least 10 words to start scanning…
+                Paste or write your text to start scanning… (longer texts give more accurate results)
               </div>
             )}
 

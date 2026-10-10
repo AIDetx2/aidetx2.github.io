@@ -35,10 +35,11 @@ const LABEL_COPY: Record<"AI" | "Human" | "Hybrid", string> = {
 };
 
 const MODEL_COLORS: Record<string, string> = {
-  deepseek: "#6366f1",
-  gpt_oss:  "#10b981",
-  llama:    "#f59e0b",
-  mistral:  "#8b5cf6",
+    deepseek:    "#6366f1", // indigo
+    gpt_oss:     "#10b981", // emerald
+    llama:       "#f59e0b", // amber
+    mistral7b:   "#8b5cf6", // purple
+    mistral_nemo: "#06b6d4", // cyan
 };
 
 interface Props {
