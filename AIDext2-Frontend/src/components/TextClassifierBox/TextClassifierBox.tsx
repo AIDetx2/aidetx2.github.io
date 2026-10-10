@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect, type ChangeEvent, type DragEvent } from "react";
 import './TextClassifierBox.css'
 import ModelModal from "../ModelModal/ModelModal.tsx";
-//import { API } from "../../api.tsx"
 import ConfidenceGauge from "../ConfidenceGauge/ConfidenceGauge.tsx";
 import { PieChart} from "@mui/x-charts/PieChart";
 import SegmentTooltip from "../SegmentTooltip/SegmentTooltip";
-import { LocalScanner } from "../LocalScanner";
+import { LocalScanner } from "../../inference/LocalScanner.tsx";
 import InfoTooltip from "../InfoTooltip/InfoTooltip.tsx";
 import ChunkModal from "../ChunkModal/ChunkModal";
 import { extractTextFromFile } from "../../utils/extractText";
@@ -13,17 +12,15 @@ import { extractTextFromFile } from "../../utils/extractText";
 const MAX_CHARS = 100000;
 const MIN_WORDS = 10;
 
-// ── Thresholds for hybrid zone ─────────────────────────────────────────────
 const HYBRID_LOW  = 0.35;   // below this → Human
 const HYBRID_HIGH = 0.65;   // above this → AI
-                             // between    → Hybrid
+                            // between    → Hybrid
 
 export interface ChunkResult {
   start: number;
   end: number;
   probai: number;
-  probhuman:number;         // probability of AI (0–1)
-  //label: "AI" | "Human" | "Hybrid";
+  probhuman:number; 
   label:number;
   features: Record<string, number>;
   gen_model?: string;
@@ -59,12 +56,12 @@ interface OverallResult {
 }
 
 const MODEL_COLORS: Record<string, string> = {
-  deepseek: "#6366f1",  // indigo
-  gpt_oss:  "#10b981",  // emerald
-  llama:    "#f59e0b",  // amber
-  mistral:  "#8b5cf6",  // purple
+  deepseek:    "#6366f1", // indigo
+  gpt_oss:     "#10b981", // emerald
+  llama:       "#f59e0b", // amber
+  mistral7b:   "#8b5cf6", // purple
+  mistral_nemo: "#06b6d4", // cyan
 };
-
 
 function getModelColor(model: string): string {
   return MODEL_COLORS[model] ?? "#888";
@@ -248,7 +245,7 @@ function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
   };
 } */
 
-function deriveOverall(results: ChunkResult[],mode: "binary" | "model" | "binary/model" = "binary"): OverallResult {
+/* function deriveOverall(results: ChunkResult[],mode: "binary" | "model" | "binary/model" = "binary"): OverallResult {
   const aiConfidence =
     results.reduce((sum, r) => sum + r.probai, 0) / results.length;
 
@@ -259,8 +256,6 @@ function deriveOverall(results: ChunkResult[],mode: "binary" | "model" | "binary
     results.some(r => r.probmodel !== undefined)
       ? results.reduce((sum, r) => sum + (r.probmodel ?? 0), 0) / results.length
       : undefined;
-
-  console.log("mode",mode)
 
   if (mode === "model") {
     return {
@@ -282,6 +277,7 @@ function deriveOverall(results: ChunkResult[],mode: "binary" | "model" | "binary
 
   const hybridRatio =
     labelledChunks.filter(r => r.label === "Hybrid").length / results.length;
+
 
   let label: "AI" | "Human" | "Hybrid";
 
@@ -306,11 +302,54 @@ function deriveOverall(results: ChunkResult[],mode: "binary" | "model" | "binary
     humanConfidence,
     modelConfidence,
   };
+} */
+
+function deriveOverall(
+  results: ChunkResult[],
+  mode: "binary" | "model" | "binary/model" = "binary"
+): OverallResult {
+  const aiConfidence =
+    results.reduce((sum, r) => sum + r.probai, 0) / results.length;
+
+  const humanConfidence =
+    results.reduce((sum, r) => sum + r.probhuman, 0) / results.length;
+
+  const modelConfidence =
+    results.some(r => r.probmodel !== undefined)
+      ? results.reduce((sum, r) => sum + (r.probmodel ?? 0), 0) / results.length
+      : undefined;
+
+  if (mode === "model") {
+    return { label: "AI", aiConfidence, humanConfidence, modelConfidence };
+  }
+
+  const total = results.length;
+  const aiCount = results.filter(r => r.probai > HYBRID_HIGH).length;
+  const humanCount = results.filter(r => r.probhuman > HYBRID_HIGH).length;
+
+  const aiRatio = aiCount / total;
+  const humanRatio = humanCount / total;
+
+  // Mixed authorship: meaningful presence of BOTH confidently-AI and
+  // confidently-Human chunks — i.e. distinct parts of the doc disagree.
+  const MIN_MIX_RATIO = 0.3; // tune: min share each side needs to "count"
+
+  let label: "AI" | "Human" | "Hybrid";
+
+  if (aiRatio >= MIN_MIX_RATIO && humanRatio >= MIN_MIX_RATIO) {
+    label = "Hybrid";
+  } else if (aiConfidence >= humanConfidence) {
+    label = "AI";
+  } else {
+    label = "Human";
+  }
+
+  return { label, aiConfidence, humanConfidence, modelConfidence };
 }
 
 
 function deriveGenModel(results: ChunkResult[]): string | null {
-  console.log("Results",results)
+  //console.log("Results",results)
   const aiChunks = results.filter(r => r.gen_model && r.label === 1);
   if (!aiChunks.length) return null;
 
@@ -356,10 +395,11 @@ export default function TextScanner() {
   }
 
 
-  const showModel = showModelWarning;
-  console.log(showModel)
+  if(showModelWarning){
+  }
   
-  const canScan = wordCount >= MIN_WORDS && selectedModel !== null && scannerReady;
+  //const canScan = wordCount >= MIN_WORDS && selectedModel !== null && scannerReady;
+  const canScan = selectedModel !== null && scannerReady && wordCount > 0;
 
   // Apply hybrid re-labelling before parsing segments
   const labelledResults = scanResponse?.results ?? [];
@@ -369,7 +409,7 @@ export default function TextScanner() {
     : [];
 
   const overall = labelledResults.length > 0 ? deriveOverall(labelledResults,selectedModel?.id as "binary" | "model" | "binary/model") : null;
-  console.log("Overall",overall)
+  //console.log("Overall",overall)
 
   let gaugeConfidence = 0;
 
@@ -414,7 +454,7 @@ export default function TextScanner() {
       // Eagerly initialize on mount, don't wait for user to click scan
       localScannerRef.current.load().then(() => {
           setScannerReady(true);
-          console.log("Scanner ready");
+          //console.log("Scanner ready");
       }).catch(err => {
           console.error("Scanner failed to load:", err);
       });
@@ -468,8 +508,7 @@ export default function TextScanner() {
       if (!file) return;
       try {
           const extracted = await extractTextFromFile(file);
-          console.log("Extracted text",text);
-          //setText(extracted.slice(0, MAX_CHARS));
+          //console.log("Extracted text",text);
           setText(normalizeText(extracted).slice(0, MAX_CHARS));  // ← normalize
       } catch (err) {
           console.error("Failed to extract text:", err);
@@ -513,7 +552,7 @@ export default function TextScanner() {
       if (!file) return;
       try {
           const extracted = await extractTextFromFile(file);
-          console.log("Extracted text File Drop",extracted);
+          //console.log("Extracted text File Drop",extracted);
           //setText(extracted.slice(0, MAX_CHARS));
           setText(normalizeText(extracted).slice(0, MAX_CHARS)); 
       } catch (err) {
@@ -522,13 +561,9 @@ export default function TextScanner() {
   }
 
   async function handleScan() {
-    //console.log("handleScan version: LOCAL");
-    //console.log("handleScan START");
-    console.log("Text length:", text.length);
-    console.log("First 100 chars:", JSON.stringify(text.slice(0, 100)));
-    console.log("selectedModel:", selectedModel);
+    //console.log("Text length:", text.length);
+    //console.log("selectedModel:", selectedModel);
     //console.log("localScannerRef.current:", localScannerRef.current);
-    //console.log("scannerReady:", scannerReady);
     if (!selectedModel) {
       setShowModelWarning(true);
       return;
@@ -540,9 +575,7 @@ export default function TextScanner() {
       if (normalizedText !== text) setText(normalizedText); // sync textarea
       const res = await localScannerRef.current!.scan(normalizedText, { windowMode }, selectedModel);
       //const res = await localScannerRef.current!.scan(text, { windowMode },selectedModel);
-      console.log("Final response",res)
-      console.log("First chunk:", res?.results[0]);
-      console.log("First chunk text slice:", JSON.stringify(text.slice(res?.results[0].start, res?.results[0].end)));
+      //console.log("Final response",res)
       setScanResponse(res);
     } finally {
       setIsScanning(false);
@@ -618,7 +651,12 @@ export default function TextScanner() {
             {windowMode === "words" ? "Words" : "Characters"}
           </span>
         </div>
-        {wordCount >= MIN_WORDS && !selectedModel && (
+        {wordCount > 0 && wordCount < MIN_WORDS && (
+          <span style={{ fontSize: 13, color: "#e07b30" }}>
+            ⓘ Short texts are less reliable — the more text you provide, the more accurate the result.
+          </span>
+        )}
+        {!selectedModel && (
           <span style={{ fontSize: 13, color: "#e05c5c" }}>
             ⚠ Please select a model before scanning
           </span>
@@ -723,9 +761,16 @@ export default function TextScanner() {
                   <div className="metric-row">
                     <div className="metric-label-row">
                       <span className="metric-label">Generated by</span>
-                      <InfoTooltip
-                          text="The language model predicted to have generated the AI-written content. This prediction is based on the combined analysis of the detected AI text chunks."
-                      />
+                       <InfoTooltip
+    text={`The language model predicted to have generated the AI-written content. This prediction is based on the combined analysis of the detected AI text chunks.
+
+Models included in the training dataset:
+\t• DeepSeek
+\t• GPT-OSS
+\t• Llama
+\t• Mistral 7B
+\t• Mistral Nemo`}
+/>
                     </div>
                     <div className={`label-badge badge-${modelKey}`}>
                       <span className={`label-dot dot-${modelKey}`} />
@@ -1038,7 +1083,7 @@ export default function TextScanner() {
 
             {text.length === 0 && !isDragging && (
               <div className="ghost-placeholder">
-                Paste or write at least 10 words to start scanning…
+                Paste or write your text to start scanning… (longer texts give more accurate results)
               </div>
             )}
 
@@ -1075,9 +1120,14 @@ export default function TextScanner() {
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.75rem" }}>
-            <span style={{ fontSize: 12, color: charCount > 11000 ? "#e07b30" : "#888" }}>
-              {charCount.toLocaleString()} / 12,000 characters
+            <span style={{ fontSize: 12, color: charCount > 99000 ? "#e07b30" : "#888" }}>
+              {charCount.toLocaleString()} / 100,000 characters
             </span>
+            {wordCount > 0 && wordCount < MIN_WORDS && (
+              <span style={{ fontSize: 12, color: "#e07b30" }}>
+                longer texts improve accuracy
+              </span>
+            )}
           </div>
           
         </>

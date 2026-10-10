@@ -1,6 +1,6 @@
 import { Features } from "./Features";
 
-function fnv1a(data: Uint8Array) {
+/* function fnv1a(data: Uint8Array) {
     let h = 0x811c9dc5;
 
     for (let i = 0; i < data.length; i++) {
@@ -9,7 +9,7 @@ function fnv1a(data: Uint8Array) {
     }
 
     return (h >>> 0).toString(16);
-}
+} */
 
 export class FeatureExtractor {
 
@@ -34,7 +34,7 @@ export class FeatureExtractor {
             ) ?? [];
         // In FeatureExtractor.extract(), right after building words:
         //console.log("token count", words.length);
-        console.log("tokens", words);
+        //console.log("tokens", words);
 
         const features: Record<string, number> = {};
 
@@ -44,35 +44,32 @@ export class FeatureExtractor {
         features["perplexity_1"] =
             this.feat.perplexity(text);
 
-        console.log("Human:", fnv1a(this.referenceModels["human_bytes"]));
-        console.log("AI:", fnv1a(this.referenceModels["ai_bytes"]));
+        const human = this.referenceModels["human_bytes"];
+        const ai    = this.referenceModels["ai_bytes"];
 
-        let diff = 0;
+        if (human) {
+            features["ncd_human"]  = this.feat.ncd(text, human);
+            features["ncsd_human"] = this.feat.ncsd(text, human);
+        }
+        if (ai) {
+            features["ncd_ai"]  = this.feat.ncd(text, ai);
+            features["ncsd_ai"] = this.feat.ncsd(text, ai);
+        }
+        if (human && ai) {
+            features["ncd_diff"]  = features["ncd_human"]  - features["ncd_ai"];
+            features["ncsd_diff"] = features["ncsd_human"] - features["ncsd_ai"];
+        }
+
+        //console.log("Human:", fnv1a(this.referenceModels["human_bytes"]));
+        //console.log("AI:", fnv1a(this.referenceModels["ai_bytes"]));
+
+        /* let diff = 0;
 
         for (let i = 0; i < this.referenceModels["human_bytes"].length; i++) {
             if (this.referenceModels["human_bytes"][i] !== this.referenceModels["ai_bytes"][i]) {
                 diff++;
             }
         }
-
-        console.log("Different bytes:", diff);
-        
-         // NCD
-        /* if (this.referenceModels["human_bytes"]) {
-            features["ncd_human"] =
-                this.feat.ncd(
-                    text,
-                    this.referenceModels["human_bytes"]
-                );
-        }
-
-        if (this.referenceModels["ai_bytes"]) {
-            features["ncd_ai"] =
-                this.feat.ncd(
-                    text,
-                    this.referenceModels["ai_bytes"]
-                );
-        } */
 
         const ncdHuman = this.feat.ncd(
             text,
@@ -84,8 +81,8 @@ export class FeatureExtractor {
             this.referenceModels["ai_bytes"]
         );
 
-        console.log("NCD HUMAN", ncdHuman);
-        console.log("NCD AI", ncdAI);
+        //console.log("NCD HUMAN", ncdHuman);
+        //console.log("NCD AI", ncdAI);
 
         features["ncd_human"] = ncdHuman;
         features["ncd_ai"] = ncdAI;
@@ -97,11 +94,9 @@ export class FeatureExtractor {
         ) {
             features["ncd_diff"] =
                 features["ncd_human"] - features["ncd_ai"];
-        } */
+        }
 
-        console.log(
-            this.referenceModels["human_bytes"].buffer.constructor.name
-        );
+        //console.log(this.referenceModels["human_bytes"].buffer.constructor.name);
         // NCSD
         if (this.referenceModels["human_bytes"]) {
             features["ncsd_human"] =
@@ -125,7 +120,7 @@ export class FeatureExtractor {
         ) {
             features["ncsd_diff"] =
                 features["ncsd_human"] - features["ncsd_ai"];
-        }
+        } */
 
 
         features["shannon_entropy"] =
@@ -180,8 +175,8 @@ export class FeatureExtractor {
             this.feat.readability(text)
         );
 
-        console.log(Object.keys(features).length);
-        console.log(Object.keys(features));
+        //console.log(Object.keys(features).length);
+        //console.log(Object.keys(features));
 
         return features;
     }

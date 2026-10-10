@@ -4,7 +4,8 @@ const LABEL_MAP: Record<number, string> = {
     0: "deepseek",
     1: "gpt_oss",
     2: "llama",
-    3: "mistral"
+    3: "mistral7b",
+    4: "mistral_nemo"
 };
 
 export class ONNXClassifier {
@@ -31,7 +32,7 @@ export class ONNXClassifier {
         console.log("Output names:", this.session.outputNames);
     } */
 
-    async load(path: string = "/AIDetx2-Frontend/binary_model_no_pos_zipmap.onnx") {
+    async load(path: string = "/binary_model_no_pos_zipmap.onnx") {
         //ort.env.wasm.wasmPaths = "/AIDext2-Frontend/";
         this.session = await ort.InferenceSession.create(path, {
             executionProviders: ["wasm"]
@@ -70,14 +71,14 @@ export class ONNXClassifier {
 
         const tensor = new ort.Tensor("float32", Float32Array.from(features), [1, features.length]);
         const output = await this.session.run({ float_input: tensor });
-        console.log("Output multiclass",output)
+        //console.log("Output multiclass",output)
 
         const label = Number(output["label"].data[0]);
         const probabilities = Array.from(output["probabilities"].data as Float32Array);
         const predictedModel = LABEL_MAP[label];
         const confidence = probabilities[label];
 
-        console.log("Predicted model:", predictedModel, "| Confidence:", confidence.toFixed(4));
+        //console.log("Predicted model:", predictedModel, "| Confidence:", confidence.toFixed(4));
 
         return { label, predictedModel, confidence, probabilities };
     }
@@ -85,26 +86,13 @@ export class ONNXClassifier {
     async predict(features: number[]) {
         if (!this.session) throw new Error("Model not loaded");
 
-        const FEATURE_NAMES = [
-            "compression_ratio_1", "perplexity_1",
-            "ncd_human", "ncd_ai", "ncd_diff",
-            "ncsd_human", "ncsd_ai", "ncsd_diff",
-            "shannon_entropy", "entropy_ratio_1",
-            "lexical_richness", "lexical_density",
-            "hapax_ratio", "uncommon_word_ratio",
-            "vocabulary_richness_per100", "avg_sentence_length",
-            "sentence_length_variance", "punctuation_density",
-            "repetition_rate", "bigram_repetition_rate", "burstiness",
-            "flesch_reading_ease", "gunning_fog", "smog_index"
-        ];
-
-        console.table(
+        /* console.table(
             features.map((val, i) => ({
             feature: FEATURE_NAMES[i] ?? `feat_${i}`,
             value: val,
             zero: val === 0,
             }))
-        );
+        ); */
 
         const tensor = new ort.Tensor(
             "float32",
@@ -114,17 +102,17 @@ export class ONNXClassifier {
 
         const output = await this.session.run({ float_input: tensor });
 
-        console.log("Outpu",output)
+        //console.log("Outpu",output)
 
         const label = Number(output["label"].data[0]);
         const probHuman = output["probabilities"].data[0] as number;
         const probAI = output["probabilities"].data[1] as number;
 
-        console.log(
+        /* console.log(
             "Label:", label === 1 ? "AI" : "Human",
             "| P(Human):", probHuman.toFixed(4),
             "| P(AI):", probAI.toFixed(4)
-        );
+        ); */
 
         return { label, probHuman, probAI };
     }

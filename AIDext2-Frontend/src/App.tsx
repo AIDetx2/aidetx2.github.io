@@ -11,13 +11,13 @@ import Models from './pages/Models'
 
 function App() {
   return (
-    <BrowserRouter basename="/AIDetx2-Frontend/">
-      <Navbar/>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/docs" element={<Documentation />} />
-        <Route path="/models" element={<Models/>} />
-      </Routes>
+    <BrowserRouter basename="">
+        <Navbar/>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/docs" element={<Documentation />} />
+          <Route path="/models" element={<Models/>} />
+        </Routes>
     </BrowserRouter>
   )
 }

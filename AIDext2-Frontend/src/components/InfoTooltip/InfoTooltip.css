@@ -39,3 +39,7 @@
 
     z-index: 9999;
 }
+
+.info-tooltip-popup {
+    white-space: pre-wrap;
+}

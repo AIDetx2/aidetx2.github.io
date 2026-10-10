@@ -1,11 +1,9 @@
 import { FeatureExtractor } from "../features/FeatureExtractor";
 import { ONNXClassifier } from "./ONNXClassifier";
 //import { init } from '@bokuweb/zstd-wasm';
-import { HUMAN_BYTES, AI_BYTES } from '../features/ReferenceModels';
+import { HUMAN_BYTES, AI_BYTES, AI_BYTES_MULTICLASS } from '../features/ReferenceModels';
 import { Features } from "../features/Features";
 
-// Must match the exact order your model was trained with.
-// Derived from FeatureExtractor.extract() key insertion order.
 const FEATURE_ORDER_BINARY = [
     "compression_ratio_1",
     "perplexity_1",
@@ -102,7 +100,8 @@ function getWindowConfigChars(text: string): { window: number; stride: number } 
 export class LocalScanner {
   private binaryClassifier  = new ONNXClassifier();
   private modelClassifier   = new ONNXClassifier();
-  private extractor: FeatureExtractor | null = null;
+  private binaryExtractor: FeatureExtractor | null = null;
+  private modelExtractor:  FeatureExtractor | null = null;
   private ready = false;
   private loadPromise: Promise<void> | null = null;
   
@@ -137,25 +136,30 @@ export class LocalScanner {
       if (this.loadPromise) return this.loadPromise;
 
       this.loadPromise = (async () => {
-          console.log("Initializing zstd...");
+          //console.log("Initializing zstd...");
           await Features.init();  // ← initialize where compress is imported
-          console.log("zstd ready");
+          //console.log("zstd ready");
 
-          console.log("Loading ONNX model...");
+          //console.log("Loading ONNX model...");
           //await this.classifier.load();
           await Promise.all([
-            this.binaryClassifier.load("/AIDetx2-Frontend/binary_model_no_pos_zipmap.onnx"),
-            this.modelClassifier.load("/AIDetx2-Frontend/ai_model_no_pos_zipmap.onnx"),
-        ]);
-          console.log("ONNX ready");
+            //this.binaryClassifier.load("/AIDetx2-Frontend/binary_model_no_pos_zipmap.onnx"),
+            //this.modelClassifier.load("/AIDetx2-Frontend/ai_model_no_pos_zipmap.onnx"),
+            this.binaryClassifier.load("binary_model_XGB.onnx"),
+            this.modelClassifier.load("ai_model_MLP.onnx"),
 
-          this.extractor = new FeatureExtractor({
+        ]);
+          //console.log("ONNX ready");
+
+          /* this.extractor = new FeatureExtractor({
               human_bytes: HUMAN_BYTES,
               ai_bytes: AI_BYTES,
-          });
+          }); */
+          this.binaryExtractor = new FeatureExtractor({ human_bytes: HUMAN_BYTES, ai_bytes: AI_BYTES });
+          this.modelExtractor  = new FeatureExtractor({ ai_bytes: AI_BYTES_MULTICLASS });
 
           this.ready = true;
-          console.log("LocalScanner fully ready");
+          //console.log("LocalScanner fully ready");
       })();
 
       return this.loadPromise;
@@ -263,7 +267,7 @@ export class LocalScanner {
       const slice = text.slice(start, end);
       if (!slice.trim()) continue;
 
-      const featureMap = this.extractor!.extract(slice);
+      let featureMap: Record<string, number> = {};
       const task = selectedModel.id; 
 
 
@@ -274,43 +278,25 @@ export class LocalScanner {
       let gen_model: string | undefined = undefined;
 
       if (task === "binary") {
-        const features = toVector(featureMap, FEATURE_ORDER_BINARY);
-        const res = await this.binaryClassifier.predict(features);
-        label     = res.label;
-        probai    = res.probAI;
-        probhuman = res.probHuman;
+        featureMap = this.binaryExtractor!.extract(slice);
+        const res = await this.binaryClassifier.predict(toVector(featureMap, FEATURE_ORDER_BINARY));
+        label = res.label; probai = res.probAI; probhuman = res.probHuman;
 
       } else if (task === "model") {
-        //change later to FEATURE_ORDER_MODEL
-        const features = toVector(featureMap, FEATURE_ORDER_MODEL);
-        const res = await this.modelClassifier.predictMulticlass(features);
-        console.log("Response",res);
-        label     = 1; // always AI in model detection
-        probai = 0;
-        probhuman = 0;
-        probmodel = res.confidence;
-        gen_model = res.predictedModel;
+        featureMap = this.modelExtractor!.extract(slice);
+        const res = await this.modelClassifier.predictMulticlass(toVector(featureMap, FEATURE_ORDER_MODEL));
+        label = 1; probmodel = res.confidence; gen_model = res.predictedModel;
 
       } else if (task === "binary/model") {
-        const featuresBinary = toVector(featureMap, FEATURE_ORDER_BINARY);
-        const binary = await this.binaryClassifier.predict(featuresBinary);
-        label     = binary.label;
-        probai    = binary.probAI;
-        probhuman = binary.probHuman;
+        featureMap = this.binaryExtractor!.extract(slice);
+        const binary = await this.binaryClassifier.predict(toVector(featureMap, FEATURE_ORDER_BINARY));
+        label = binary.label; probai = binary.probAI; probhuman = binary.probHuman;
 
-        // Only run model classifier if predicted as AI
         if (binary.label === 1) {
-          //change later to FEATURE_ORDER_MODEL
-          const featuresModel = toVector(featureMap, FEATURE_ORDER_MODEL);
-          const model = await this.modelClassifier.predictMulticlass(featuresModel);
-          console.log({
-            predictedModel: model.predictedModel,
-            confidence: model.confidence,
-          });
-          console.log("Result ahahahahahah",model)
+          const modelFeatures = this.modelExtractor!.extract(slice);   // different AI reference
+          const model = await this.modelClassifier.predictMulticlass(toVector(modelFeatures, FEATURE_ORDER_MODEL));
           gen_model = model.predictedModel;
           probmodel = model.confidence;
-
         }
       }
 

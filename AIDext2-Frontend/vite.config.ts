@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/AIDetx2-Frontend/',
+  base: '/',
   server: {
     headers: {
       'Cache-Control': 'no-store',

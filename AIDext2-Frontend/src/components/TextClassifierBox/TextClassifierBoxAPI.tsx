@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, type ChangeEvent, type DragEvent } from "react";
 import './TextClassifierBox.css'
 import ModelModal from "../ModelModal/ModelModal.tsx";
-import { API } from "../../api.tsx"
+import { API } from "../../services/api.tsx"
 import ConfidenceGauge from "../ConfidenceGauge/ConfidenceGauge.tsx";
 import SegmentTooltip from "../SegmentTooltip/SegmentTooltip";
 import InfoTooltip from "../InfoTooltip/InfoTooltip.tsx";
@@ -57,11 +57,13 @@ interface OverallResult {
 }
 
 const MODEL_COLORS: Record<string, string> = {
-  deepseek: "#6366f1",  // indigo
-  gpt_oss:  "#10b981",  // emerald
-  llama:    "#f59e0b",  // amber
-  mistral:  "#8b5cf6",  // purple
+  deepseek:    "#6366f1", // indigo
+  gpt_oss:     "#10b981", // emerald
+  llama:       "#f59e0b", // amber
+  mistral7b:   "#8b5cf6", // purple
+  mistral_nemo: "#06b6d4", // cyan
 };
+
 
 function getModelColor(model: string): string {
   return MODEL_COLORS[model] ?? "#888";
@@ -217,6 +219,7 @@ function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
   return { label, confidence: avgScore };
 } */
 
+/* 
 function deriveOverall(results: ChunkResult[]): OverallResult {
   const aiConfidence =
     results.reduce((sum, r) => sum + r.probai, 0) / results.length;
@@ -264,21 +267,61 @@ function deriveOverall(results: ChunkResult[]): OverallResult {
     humanConfidence,
     modelConfidence,
   };
+} */
+
+function deriveOverall(
+  results: ChunkResult[],
+  mode: "binary" | "model" | "binary/model" = "binary"
+): OverallResult {
+  const aiConfidence =
+    results.reduce((sum, r) => sum + r.probai, 0) / results.length;
+
+  const humanConfidence =
+    results.reduce((sum, r) => sum + r.probhuman, 0) / results.length;
+
+  const modelConfidence =
+    results.some(r => r.probmodel !== undefined)
+      ? results.reduce((sum, r) => sum + (r.probmodel ?? 0), 0) / results.length
+      : undefined;
+
+  if (mode === "model") {
+    return { label: "AI", aiConfidence, humanConfidence, modelConfidence };
+  }
+
+  const total = results.length;
+  const aiCount = results.filter(r => r.probai > HYBRID_HIGH).length;
+  const humanCount = results.filter(r => r.probhuman > HYBRID_HIGH).length;
+
+  const aiRatio = aiCount / total;
+  const humanRatio = humanCount / total;
+
+  // Mixed authorship: meaningful presence of BOTH confidently-AI and
+  // confidently-Human chunks — i.e. distinct parts of the doc disagree.
+  const MIN_MIX_RATIO = 0.3; // tune: min share each side needs to "count"
+
+  let label: "AI" | "Human" | "Hybrid";
+
+  if (aiRatio >= MIN_MIX_RATIO && humanRatio >= MIN_MIX_RATIO) {
+    label = "Hybrid";
+  } else if (aiConfidence >= humanConfidence) {
+    label = "AI";
+  } else {
+    label = "Human";
+  }
+
+  return { label, aiConfidence, humanConfidence, modelConfidence };
 }
 
-function deriveGenModel(results: ChunkResult[]): string | null {
-  console.log("puta")
-  console.log("results",results)
-  const aiChunks = results.filter(r => r.gen_model && r.label === 1);
-  console.log("NUmber of ai chunks",aiChunks.length)
-  console.log("hello")
-  if (!aiChunks.length) return null;
-  console.log("hello2")
 
-  console.log("lolololo")
+function deriveGenModel(results: ChunkResult[]): string | null {
+  //console.log("results",results)
+  const aiChunks = results.filter(r => r.gen_model && r.label === 1);
+  //console.log("Number of ai chunks",aiChunks.length)
+  if (!aiChunks.length) return null;
+
   const counts: Record<string, number> = {};
   for (const chunk of aiChunks) {
-    console.log("hhhhh",chunk.gen_model!)
+    //console.log("Chunk gen model",chunk.gen_model!)
     const m = chunk.gen_model!;
     counts[m] = (counts[m] ?? 0) + 1;
   }
@@ -313,10 +356,11 @@ export default function TextScannerAPI() {
   const canClear = text.trim().length > 0 || hasResults;
 
 
-  const showModel = showModelWarning;
-  console.log(showModel)
+  if(showModelWarning){
+  }
   
-  const canScan = wordCount >= MIN_WORDS && selectedModel !== null;
+  //const canScan = wordCount >= MIN_WORDS && selectedModel !== null;
+  const canScan = selectedModel !== null && wordCount > 0;
 
   // Apply hybrid re-labelling before parsing segments
   const labelledResults = scanResponse?.results ?? [];
@@ -326,7 +370,7 @@ export default function TextScannerAPI() {
     : [];
 
   const overall = labelledResults.length > 0 ? deriveOverall(labelledResults) : null;
-  console.log("Overall",overall)
+  //console.log("Overall",overall)
 
   let gaugeConfidence = 0;
 
@@ -412,7 +456,6 @@ export default function TextScannerAPI() {
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
       const file = e.target.files?.[0];
       if (!file) return;
-      //console.log("HAHAHAHAHAHAHA")
 
       const ext = file.name.split(".").pop()?.toLowerCase();
 
@@ -482,7 +525,7 @@ async function handleScan() {
     setIsScanning(true);
     try {
       const res = await API.scanText(text, selectedModel.id, selectedModel.category, windowMode);
-      console.log("Response", res);
+      //console.log("Response", res);
       setScanResponse(res);
     } finally {
       setIsScanning(false);
@@ -557,7 +600,12 @@ async function handleScan() {
             {windowMode === "words" ? "Words" : "Characters"}
           </span>
         </div>
-        {wordCount >= MIN_WORDS && !selectedModel && (
+        {wordCount > 0 && wordCount < MIN_WORDS && (
+          <span style={{ fontSize: 13, color: "#e07b30" }}>
+            ⓘ Short texts are less reliable — the more text you provide, the more accurate the result.
+          </span>
+        )}
+        {!selectedModel && (
           <span style={{ fontSize: 13, color: "#e05c5c" }}>
             ⚠ Please select a model before scanning
           </span>
@@ -656,16 +704,23 @@ async function handleScan() {
 
               {(selectedModel?.id === "binary/model" || selectedModel?.id === "model") && (() => {
                 const genModel = deriveGenModel(labelledResults);
-                //console.log("ahahhahahahahaahhaahh",genModel)
+                //console.log("Gen Model",genModel)
                 if (!genModel) return null;
                 const modelKey = genModel === "gpt_oss" ? "gpt" : genModel;
                 return (
                   <div className="metric-row">
                     <div className="metric-label-row">
                       <span className="metric-label">Generated by</span>
-                      <InfoTooltip
-                          text="The language model predicted to have generated the AI-written content. This prediction is based on the combined analysis of the detected AI text chunks."
-                      />
+                          <InfoTooltip
+    text={`The language model predicted to have generated the AI-written content. This prediction is based on the combined analysis of the detected AI text chunks.
+
+Models included in the training dataset:
+\t• DeepSeek
+\t• GPT-OSS
+\t• Llama
+\t• Mistral 7B
+\t• Mistral Nemo`}
+/>
                     </div>
                     <div className={`label-badge badge-${modelKey}`}>
                       <span className={`label-dot dot-${modelKey}`} />
@@ -1017,6 +1072,11 @@ async function handleScan() {
             <span style={{ fontSize: 12, color: charCount > 11000 ? "#e07b30" : "#888" }}>
               {charCount.toLocaleString()} / 12,000 characters
             </span>
+            {wordCount > 0 && wordCount < MIN_WORDS && (
+              <span style={{ fontSize: 12, color: "#e07b30" }}>
+                longer texts improve accuracy
+              </span>
+            )}
           </div>
         </>
       )}

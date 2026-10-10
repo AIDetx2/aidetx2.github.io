@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState} from 'react'
+import { useLocation } from 'react-router-dom'
 import './Documentation.css'
 
 interface NavItem {
@@ -13,15 +14,16 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     items: [{ id: 'overview', label: 'Introduction', icon: 'ti-home' }],
   },
   {
-    label: 'The tool',
+    label: 'Usage',
     items: [
       { id: 'tool', label: 'How it works', icon: 'ti-scan' },
-      { id: 'window', label: 'Window modes', icon: 'ti-layout-columns' },
+      { id: 'window', label: 'Window segmentation', icon: 'ti-layout-columns' },
     ],
   },
   {
     label: 'Architecture',
     items: [
+        { id: 'arch', label: 'Architecture Overview', icon: 'ti-sitemap' },
         { id: 'arch-backend', label: 'Backend architecture', icon: 'ti-server-2' },
         { id: 'arch-local', label: 'Local architecture', icon: 'ti-device-laptop' },
         { id: 'comparison', label: 'Local vs Backend', icon: 'ti-arrows-left-right' },
@@ -37,7 +39,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: 'Reference',
     items: [
         { id: 'faq', label: 'FAQ', icon: 'ti-help-circle' },
-        { id: 'contributing', label: 'Contributing', icon: 'ti-git-pull-request' },
+        { id: 'limitations', label: 'Limitations', icon: 'ti-alert-triangle' },
     ],
   },
   {
@@ -47,51 +49,75 @@ const navGroups: { label: string; items: NavItem[] }[] = [
 ]
 
 const appFeatures = [
-  {
-    icon: 'ti-highlight',
-    name: 'Segment highlighting',
-    desc: 'Each text segment is highlighted in-place — red for AI, green for human — with hover tooltips showing per-block details.(change colors later?????)',
-  },
-  {
-    icon: 'ti-gauge',
-    name: 'Confidence gauge',
-    desc: 'An animated gauge shows the document-level confidence score derived from the average of all block predictions.',
-  },
-  {
-    icon: 'ti-upload',
-    name: 'File upload',
-    desc: 'Drag and drop or upload .txt, .docx and .pdf files. Text is extracted and loaded directly into the scanner.',
-  },
-  {
-    icon: 'ti-cpu',
-    name: 'Model selection',
-    desc: 'Choose between multiple detection models. Switching models clears the previous result so comparisons are always fresh.',
-  },
-  {
-    icon: 'ti-toggle-left',
-    name: 'Window mode toggle',
-    desc: 'Switch between character and word windowing at any time. Changing mode resets both the result and the input text.',
-  },
-  {
-    icon: 'ti-robot',
-    name: 'Generator attribution',
-    desc: 'For supported models, the most common generator (GPT-4, Gemini, etc.) is identified from AI-flagged chunks and shown in the analysis panel.',
-  },
+    {
+        icon: 'ti-robot',
+        name: 'AI / Human detection',
+        desc: 'Classifies submitted text as either human-written or AI-generated using the trained detection models.',
+    },
+    {
+        icon: 'ti-files',
+        name: 'Hybrid text detection',
+        desc: 'Classifies documents as hybrid when they contain a mixture of human-written and AI-generated text, identifying cases where both types of content are present.',
+    },
+    {
+        icon: 'ti-brain',
+        name: 'AI model detection',
+        desc: 'For AI-generated text, identifies the most likely source model from the supported generator classes.',
+    },
+    {
+        icon: 'ti-layout-columns',
+        name: 'Segment-level analysis',
+        desc: 'Analyzes overlapping text segments independently, allowing AI-generated regions to be identified within a larger document.',
+    },
+    {
+        icon: 'ti-gauge',
+        name: 'Document confidence',
+        desc: 'Combines segment-level predictions into a document-level confidence score and final classification.',
+    },
+    {
+        icon: 'ti-highlight',
+        name: 'Segment highlighting',
+        desc: 'Highlights analyzed text segments according to their predictions, making potentially AI-generated regions easy to locate.',
+    },
+    {
+        icon: 'ti-device-laptop',
+        name: 'Local inference',
+        desc: 'Runs detection directly in the browser using ONNX Runtime Web and WebAssembly, keeping submitted text on the user’s device.',
+    },
+    {
+        icon: 'ti-server-2',
+        name: 'Backend inference',
+        desc: 'Sends text to the FastAPI backend for server-side processing and inference without requiring local model execution.',
+    },
+    {
+        icon: 'ti-upload',
+        name: 'File upload',
+        desc: 'Upload TXT, DOCX, or PDF files and extract their text directly into the scanner for analysis.',
+    },
+    {
+        icon: 'ti-arrows-split',
+        name: 'Automatic window segmentation',
+        desc: 'Choose between character- and word-based segmentation while the appropriate window size and stride are determined automatically from the document length.',
+    },
+    {
+        icon: 'ti-target',
+        name: 'Generator attribution',
+        desc: 'Identifies the most common detected generator among AI-flagged segments and presents it in the analysis results.',
+    },
 ]
 
 const faqItems = [
   {
     q: 'What file types are supported?',
-    a: '.txt, .docx, and .pdf. Text is extracted automatically on upload.',
+    a: '.txt, .docx, and .pdf. Text is extracted automatically when a file is uploaded.',
   },
   {
     q: 'What languages are supported?',
     a: (
       <>
-        Currently, only English text is supported. The extracted features
-        and trained models were built and tuned on English-language data,
-        so results on other languages are unverified and likely
-        unreliable.
+        Currently, only English text is supported. The extracted features and
+        trained models were built and tuned on English-language data, so
+        results on other languages are unverified and may be unreliable.
       </>
     ),
   },
@@ -99,86 +125,119 @@ const faqItems = [
     q: 'Is my text stored anywhere?',
     a: (
       <>
-        In the local version, no — analysis happens entirely in your
-        browser. In the backend version, submitted text is sent to the API
-        for processing.{' '}
-        {/* TODO: confirm actual backend storage/logging behavior before publishing */}
-        See <a href="#comparison">Local vs. Backend</a> for the full
-        comparison.
+        In the local version, no — analysis happens entirely in your browser.
+        In the backend version, submitted text is sent to the API for
+        processing.{' '}
+        <a href="#comparison">See Local vs. Backend</a> for more information
+        about the two inference modes.
       </>
     ),
   },
   {
-    q: 'How accurate is it?',
+    q: 'How accurate is AIDetX2?',
     a: (
       <>
-        Accuracy depends on the text: very short inputs give the models
-        less to work with, heavily edited AI text can blur the signals
-        detection relies on, and results outside English are currently
-        unverified. Treat confidence scores as an indicator, not a
-        certainty.
+        Accuracy depends on the text and the type of detection being
+        performed. Very short inputs provide less information for the models,
+        while heavily edited AI-generated text can make detection more
+        difficult. Results on languages other than English are also currently
+        unverified. Confidence scores should therefore be treated as an
+        indication rather than a certainty.
       </>
     ),
   },
   {
     q: 'Is there a file size limit?',
     a: (
-        <>
-         There's no size limit on uploaded files, but pasted or typed text in
-         the input area is capped at 100,000 characters.
-      </>
-      )
-  },
-  {
-    q: 'Can I use this offline?',
-    a: (
       <>
-        Yes, with the local version, once the page has loaded once. See{' '}
-        <a href="#comparison">Local vs. Backend</a>.
+        There is no specific file size limit imposed on uploaded documents,
+        although very large files may require more time and resources to
+        process. Pasted or typed text in the input area is limited to 100,000
+        characters.
       </>
     ),
   },
   {
-    q: 'Can I use this to prove someone used AI to write something?',
+    q: 'Can I use AIDetx2 offline?',
+    a: (
+      <>
+        Yes. The local version performs inference directly in the browser,
+        without sending the text to the backend. It can be used offline once
+        the required application resources have been loaded.{' '}
+        <a href="#comparison">See Local vs. Backend</a> for more information.
+      </>
+    ),
+  },
+  {
+    q: 'Can I use AIDetx2 to prove someone used AI to write something?',
+    a: (
+      <>
+        No. No AI detector, including AIDetX2, should be treated as definitive
+        proof that a text was written by AI. Detection results are probabilistic
+        signals, and both false positives and false negatives can occur,
+        particularly with short or heavily edited text. Results should be
+        considered alongside other evidence rather than used as the sole basis
+        for an accusation or decision.
+      </>
+    ),
+  },
+  {
+    q: 'What is the difference between AI detection and model detection?',
+    a: (
+      <>
+        AI detection determines whether a text is more likely to have been
+        written by a human or generated by AI. Model detection goes one step
+        further by attempting to identify which supported AI generator is most
+        likely responsible for AI-flagged text.
+      </>
+    ),
+  },
+  {
+    q: 'What AI models can AIDetx2 detect?',
+    a: (
+      <>
+        Model detection currently supports the AI generator classes included
+        in the trained models, including GPT-OSS, DeepSeek, LLaMA, Mistral 7B and Mistral Nemo.
+        Model attribution is probabilistic and should be interpreted as the
+        most likely supported generator rather than definitive identification.
+      </>
+    ),
+  },
+  {
+    q: 'Can AIDetx2 identify AI models it was not trained on?',
     a: (
         <>
-        No detector, including this one, should be treated as definitive
-        proof. Results are a probabilistic signal, not a verdict — false
-        positives and false negatives happen, especially on short or heavily
-        edited text. Use it as one input among several, not as the sole
-        basis for an accusation or decision about someone.
+        Model attribution is limited to the generator classes supported by the
+        trained models. Text generated by an unseen LLM may be misclassified,
+        and attribution performance may be lower for such generators.
+        AIDetx2 does not currently provide a dedicated label for unseen LLMs;
+        instead, it may assign the text to one of the supported generator classes.
+        Therefore, model attribution should be interpreted as a prediction
+        among the supported classes, not as definitive identification of the
+        actual generator.
         </>
     ),
   },
-
+  {
+    q: 'Why can local and backend results differ slightly?',
+    a: (
+      <>
+        Both inference modes use the same underlying detection models and
+        feature definitions. However, feature extraction is implemented in
+        different languages, so some feature values may differ slightly
+        between the local and backend implementations. These differences are
+        not expected to meaningfully affect the final classification results.
+        <a href="#comparison">See Local vs. Backend</a> for more information.
+      </>
+    ),
+  },
 ]
 
-/*const extractedFeatures = [
-  {
-    label: 'label',
-    desc: 'Binary classification result — AI or Human — for the block.',
-  },
-  {
-    label: 'score',
-    desc: 'Confidence in the predicted label, expressed as a float between 0 and 1.',
-  },
-  {
-    label: 'start / end',
-    desc: 'Character offsets into the original text.',
-  },
-  {
-    label: 'gen_model',
-    desc: 'The generating model identified for the block.',
-  },
-  {
-    label: 'chunk_index / total_chunks',
-    desc: 'Position of this block within the full sliding window sequence.',
-  },
-]*/
 
 export default function Documentation() {
     const [activeId, setActiveId] = useState('overview')
     const [openFaq, setOpenFaq] = useState<number | null>(null)
+    const location = useLocation()
 
     useEffect(() => {
         // 1. Define the observer to watch section visibility
@@ -192,7 +251,7 @@ export default function Documentation() {
             }
             })
         },
-        { rootMargin: '-20% 0% -35% 0%', threshold: 0.2 }
+        {rootMargin: '-20% 0% -35% 0%', threshold: 0.05 }
         )
 
         // 2. Observe all sections that have an ID
@@ -203,6 +262,23 @@ export default function Documentation() {
         sections.forEach((section) => observer.unobserve(section))
         }
     }, [])
+
+    // 2. Scroll to the hash target whenever it changes (including on first load)
+    useEffect(() => {
+        if (!location.hash) return
+
+        const id = location.hash.slice(1) // strip the leading "#"
+        // small delay lets the DOM finish rendering before we try to scroll
+        const timeout = setTimeout(() => {
+            const el = document.getElementById(id)
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                setActiveId(id)
+            }
+        }, 50)
+
+        return () => clearTimeout(timeout)
+    }, [location.hash])
     return (
         <div className="docs-shell">
         <aside className="docs-sidebar">
@@ -225,722 +301,1367 @@ export default function Documentation() {
         </aside>
 
         <main className="docs-main">
+            <div className="docs-content">
 
-            {/* ───────────────── Overview ───────────────── */}
+                {/* ───────────────── Overview ───────────────── */}
 
-            <section className="docs-section" id="overview">
-                <div className="docs-eyebrow">Overview</div>
+                <section className="docs-section" id="overview">
+                    <div className="docs-eyebrow">Overview</div>
 
-                <h1 className="docs-title">Introduction</h1>
+                    <h2 className="docs-title">Introduction</h2>
 
-                <p className="docs-lead">
-                    AIDetx2 is an AI-generated text detection platform that analyzes
-                    written content to determine whether it was written by a human or
-                    generated by an AI model — and, when possible, which model.
-                </p>
+                    <p className="docs-lead">
+                        AIDetx2 is an AI-generated text detection platform that analyzes written content to determine whether it was written by a human or generated by an AI model, with support for identifying the most likely generating model. Distinguishing AI-generated text from human writing is an increasingly important but challenging problem, particularly as generated text becomes more similar to natural human writing and can be further modified or combined with human-written content. AIDetx2addresses this problem through a lightweight detection pipeline that can run either locally in the browser or through a backend service.
+                    </p>
 
-                <hr className="docs-divider" />
+                    <hr className="docs-divider" />
 
-                <h2 className="docs-h2">What does it do?</h2>
+                    <h3 className="docs-h2">What does it do?</h3>
 
-                <p className="docs-prose">
-                    AIDetx2 analyzes text at both the segment and document level. Using
-                    a sliding window approach, it evaluates smaller portions of the text
-                    independently, allowing for more accurate detection of mixed or
-                    partially AI-generated content — rather than a single verdict for
-                    the whole document.
-                </p>
+                    <p className="docs-prose">
+                        AIDetx2 splits each submitted text into overlapping segments using a
+                        sliding window approach, then analyzes each segment independently to
+                        produce its own prediction. These segment-level predictions are then
+                        combined into a single document-level result.
+                    </p>
 
-                <ul className="docs-list">
-                    <li>
-                        <strong>Human vs. AI detection</strong> — classifies whether a
-                        text was human-written or AI-generated.
-                    </li>
-                    <li>
-                        <strong>Model attribution</strong> — for AI-generated text,
-                        identifies the most likely source model.
-                    </li>
-                    <li>
-                        <strong>Configurable segmentation</strong> — character- or
-                        word-based windowing, tuned automatically to document length.
-                    </li>
-                    <li>
-                        <strong>Segment-level confidence</strong> — every analyzed
-                        window returns its own score, not just a single document-wide
+                    <p className="docs-prose">
+                        This segment-first approach allows AIDetx2 to catch mixed or partially
+                        AI-generated content that a single whole-document prediction would
+                        miss. Depending on the length of the input, the text may be processed
+                        as one segment or split into many — see{' '}
+                        <a href="#window">Sliding Window Segmentation</a> for exactly how that's
+                        determined.
+                    </p>
+
+                    <p className="docs-prose">
+                        At the end of this process, AIDetx2 reports:
+                    </p>
+
+                    <ul className="docs-list">
+                        <li>
+                            <strong>Human vs. AI detection</strong> — classifies text as
+                            human-written, AI-generated, or hybrid, containing a mixture of
+                            human-written and AI-generated content.
+                        </li>
+                        <li>
+                            <strong>Model attribution</strong> — for AI-generated text,
+                            identifies the most likely source model.
+                        </li>
+                    </ul>
+
+                    <p className="docs-prose">
+                        AIDetx2 is available in two forms: a{' '}
+                        <a href="#arch-backend">backend-hosted version</a> that runs
+                        detection server-side, and a{' '}
+                        <a href="#arch-local">fully local version</a> that runs entirely
+                        in-browser with no data leaving your device. See{' '}
+                        <a href="#comparison">Local vs. Backend</a> for help choosing
+                        between them.
+                    </p>
+
+                </section>
+                {/* ───────────────── Tool ───────────────── */}
+
+                <section className="docs-section" id="tool">
+                    <div className="docs-eyebrow">Usage</div>
+
+                    <h2 className="docs-title">How it works</h2>
+
+                    <p className="docs-lead">
+                        AIDetx2 analyzes text through a multi-stage detection pipeline
+                        that combines segment-level predictions into a final document
+                        classification.
+                    </p>
+
+                    <hr className="docs-divider" />
+
+                    <h3 className="docs-h2">Detection pipeline</h3>
+
+                   <p className="docs-prose">
+                        When a document is submitted, the text first goes through a
+                        preprocessing stage, where formatting inconsistencies, spacing
+                        issues, and unsupported characters are normalized.
+                    </p>
+
+                    <p className="docs-prose">
+                        The document is then divided into smaller, overlapping segments
+                        using a <a href="#window">sliding window approach</a>. For each
+                        segment, <a href="/models#extracted_features">information-theoretic,
+                        lexical, and structural features</a> are extracted and analyzed
+                        by the selected Machine Learning model.
+                    </p>
+
+                    <p className="docs-prose">
+                        The predictions generated for each segment are then combined by
+                        averaging their confidence scores across the document, producing a
+                        single document-level classification. This smooths out noise from
+                        any individual segment and improves overall detection stability
+                        compared to relying on a single prediction alone.
+                    </p>
+
+                    <div className="docs-pipeline">
+                        <div className="docs-diagram">
+                            <svg width="100%" viewBox="0 0 680 680" style={{ fontFamily: 'inherit' }} role="img" aria-labelledby="pipeline-diagram-title">
+                                <title id="pipeline-diagram-title">Detection pipeline, from input document to final classification</title>
+                                <defs>
+                                <marker id="arrowP" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M2 1L8 5L2 9" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </marker>
+                                </defs>
+
+                                {/* 1. Input document */}
+                                <rect x="190" y="20" width="300" height="44" rx="8" fill="#fff" stroke="#333" strokeWidth="1" />
+                                <text x="340" y="46" textAnchor="middle" fontSize="14">Input document</text>
+                                <line x1="340" y1="64" x2="340" y2="104" stroke="#333" strokeWidth="1" markerEnd="url(#arrowP)" />
+
+                                {/* 2. Preprocessing */}
+                                <rect x="190" y="104" width="300" height="56" rx="8" fill="#fff" stroke="#333" strokeWidth="1" />
+                                <text x="340" y="126" textAnchor="middle" fontSize="14">Preprocessing</text>
+                                <text x="340" y="146" textAnchor="middle" fontSize="12" fill="#666">normalize formatting &amp; encoding</text>
+                                <line x1="340" y1="160" x2="340" y2="200" stroke="#333" strokeWidth="1" markerEnd="url(#arrowP)" />
+
+                                {/* 3. Sliding window segmentation */}
+                                <rect x="190" y="200" width="300" height="56" rx="8" fill="#fff" stroke="#333" strokeWidth="1" />
+                                <text x="340" y="222" textAnchor="middle" fontSize="14">Sliding window segmentation</text>
+                                <text x="340" y="242" textAnchor="middle" fontSize="12" fill="#666">overlapping character/word blocks</text>
+                                <line x1="340" y1="256" x2="340" y2="296" stroke="#333" strokeWidth="1" markerEnd="url(#arrowP)" />
+
+                                {/* 4. Feature extraction */}
+                                <rect x="190" y="296" width="300" height="56" rx="8" fill="#fff" stroke="#333" strokeWidth="1" />
+                                <text x="340" y="318" textAnchor="middle" fontSize="14">Feature extraction</text>
+                                <text x="340" y="338" textAnchor="middle" fontSize="12" fill="#666">per-segment stylometric features</text>
+                                <line x1="340" y1="352" x2="340" y2="392" stroke="#333" strokeWidth="1" markerEnd="url(#arrowP)" />
+
+                                {/* 5. Model prediction */}
+                                <rect x="190" y="392" width="300" height="56" rx="8" fill="#fff" stroke="#333" strokeWidth="1" />
+                                <text x="340" y="414" textAnchor="middle" fontSize="14">Model prediction</text>
+                                <text x="340" y="434" textAnchor="middle" fontSize="12" fill="#666">per-segment confidence score</text>
+                                <line x1="340" y1="448" x2="340" y2="488" stroke="#333" strokeWidth="1" markerEnd="url(#arrowP)" />
+
+                                {/* 6. Aggregation */}
+                                <rect x="190" y="488" width="300" height="56" rx="8" fill="#eef2fb" stroke="#333" strokeWidth="1" />
+                                <text x="340" y="510" textAnchor="middle" fontSize="14">Aggregation</text>
+                                <text x="340" y="530" textAnchor="middle" fontSize="12" fill="#666">average confidence across segments</text>
+                                <line x1="340" y1="544" x2="340" y2="584" stroke="#333" strokeWidth="1" markerEnd="url(#arrowP)" />
+
+                                {/* 7. Final classification */}
+                                <rect x="190" y="584" width="300" height="56" rx="8" fill="#eef7ee" stroke="#333" strokeWidth="1" />
+                                <text x="340" y="606" textAnchor="middle" fontSize="14">Final classification</text>
+                                <text x="340" y="626" textAnchor="middle" fontSize="12" fill="#666">Human / AI + model attribution</text>
+                            </svg>
+                        </div>
+                        <p className="docs-diagram-caption">
+                        The detection pipeline: each document is preprocessed, segmented, and
+                        scored per-segment before those scores are aggregated into one final
                         result.
-                    </li>
-                </ul>
+                        </p>
+                    </div>
+                </section>
 
-                <p className="docs-prose">
-                    AIDetx2 is available in two forms: a{' '}
-                    <a href="#arch-backend">backend-hosted version</a> that runs
-                    detection server-side, and a{' '}
-                    <a href="#arch-local">fully local version</a> that runs entirely
-                    in-browser with no data leaving your device. See{' '}
-                    <a href="#comparison">Local vs. Backend</a> for help choosing
-                    between them.
-                </p>
+                {/* ───────────────── Window ───────────────── */}
 
-            </section>
-            {/* ───────────────── Tool ───────────────── */}
+                <section className="docs-section" id="window">
 
-            <section className="docs-section" id="tool">
-                <div className="docs-eyebrow">The tool</div>
+                    <h2 className="docs-title">Sliding Window Segmentation</h2>
 
-                <h1 className="docs-title">How it works</h1>
+                    <p className="docs-lead">
+                        AIDetx2 uses an overlapping sliding-window strategy to divide documents into
+                        smaller text segments that are analyzed independently by the detection models.
+                    </p>
 
-                <p className="docs-lead">
-                    AIDetx2 analyzes text through a multi-stage detection pipeline
-                    that combines segment-level predictions into a final document
-                    classification.
-                </p>
+                    <hr className="docs-divider" />
 
-                <hr className="docs-divider" />
+                    <p className="docs-prose">
+                        Rather than processing an entire document as a single input, the text is divided
+                        into multiple overlapping segments. This allows AIDetx2 to identify localized
+                        AI-generated patterns across different regions of the document.
+                    </p>
 
-                <h2 className="docs-h2">Detection pipeline</h2>
+                    <p className="docs-prose">
+                        This approach is particularly useful for hybrid documents containing both
+                        human-written and AI-generated content. By analyzing each segment independently,
+                        AIDetx2 can identify isolated AI-generated regions even when they are embedded
+                        within predominantly human-written text.
+                    </p>
 
-                <p className="docs-prose">
-                    When a document is submitted, the text first goes through
-                    a preprocessing stage where formatting inconsistencies,
-                    spacing issues, and unsupported characters are normalized.
-                </p>
+                    <p className="docs-prose">
+                        Consecutive segments overlap to preserve context between neighboring regions and
+                        reduce boundary effects. The amount of overlap is determined by the stride, which
+                        is automatically calculated together with the window size based on the length of
+                        the submitted text. The user does not need to configure these values manually.
+                    </p>
 
-                <p className="docs-prose">
-                    The document is then divided into smaller, overlapping segments
-                    using a <a href="#window">sliding window approach</a>. For each
-                    segment, <a href="/AIDetx2-Frontend/models#extracted_features">statistical, linguistic, and
-                    stylometric features</a> are extracted and analyzed by the selected
-                    detection model.
-                </p>
+                    <p className="docs-prose">
+                        For example, a character-based configuration with a window size of 500 characters
+                        and a stride of 250 means that each new segment starts 250 characters after the
+                        previous one, resulting in a 50% overlap between consecutive segments.
+                    </p>
 
-                <p className="docs-prose">
-                    The predictions generated for each segment are then combined by
-                    averaging their confidence scores across the document, producing a
-                    single document-level classification. This smooths out noise from
-                    any individual segment and improves overall detection stability
-                    compared to relying on a single prediction alone.
-                </p>
+                    <p className="docs-prose">
+                        AIDetx2 supports two segmentation modes: word-based and character-based.
+                        The user selects the segmentation mode, while the system automatically determines
+                        the appropriate window size and stride according to the document length.
+                        Smaller documents may be processed as a single segment, while larger documents
+                        are divided into multiple overlapping segments for more detailed segment-level
+                        analysis.
+                    </p>
 
-                <div className="docs-pipeline">
-                    <div className="docs-diagram">
-                        <svg width="100%" viewBox="0 0 700 920" style={{ fontFamily: 'inherit' }}>
+                    <hr className="docs-divider" />
+
+                    <div className="docs-table-wrapper">
+                        <table className="docs-table">
+                            <thead>
+                                <tr>
+                                    <th>Mode</th>
+                                    <th>Document length</th>
+                                    <th>Window</th>
+                                    <th>Stride</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Character</td>
+                                    <td>&lt; 1,000 chars</td>
+                                    <td>Direct</td>
+                                    <td>—</td>
+                                </tr>
+                                <tr>
+                                    <td>Character</td>
+                                    <td>1,000–4,999</td>
+                                    <td>500</td>
+                                    <td>250</td>
+                                </tr>
+                                <tr>
+                                    <td>Character</td>
+                                    <td>5,000–14,999</td>
+                                    <td>750</td>
+                                    <td>375</td>
+                                </tr>
+                                <tr>
+                                    <td>Character</td>
+                                    <td>15,000+</td>
+                                    <td>1,000</td>
+                                    <td>500</td>
+                                </tr>
+                                <tr>
+                                    <td>Word</td>
+                                    <td>&lt; 200 words</td>
+                                    <td>Direct</td>
+                                    <td>—</td>
+                                </tr>
+                                <tr>
+                                    <td>Word</td>
+                                    <td>200–999</td>
+                                    <td>100</td>
+                                    <td>50</td>
+                                </tr>
+                                <tr>
+                                    <td>Word</td>
+                                    <td>1,000–2,999</td>
+                                    <td>150</td>
+                                    <td>75</td>
+                                </tr>
+                                <tr>
+                                    <td>Word</td>
+                                    <td>3,000+</td>
+                                    <td>200</td>
+                                    <td>100</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                   {/*  <div className="docs-feature-grid">
+                    <div className="docs-feature-card">
+                        <div className="docs-feature-icon">
+                        <i className="ti ti-text-size" />
+                        </div>
+
+                        <div className="docs-feature-name">
+                        Character mode
+                        </div>
+
+                        <div className="docs-feature-desc">
+                        <br />
+                        <strong>Behavior:</strong><br />
+                        • &lt; 1,000 chars → single prediction<br />
+                        • 1,000–4,999 → block 500 / stride 250<br />
+                        • 5,000–14,999 → block 750 / stride 375<br />
+                        • 15,000+ → block 1,000 / stride 500
+                        </div>
+                    </div>
+
+                    <div className="docs-feature-card">
+                        <div className="docs-feature-icon">
+                        <i className="ti ti-align-left" />
+                        </div>
+
+                        <div className="docs-feature-name">
+                        Word mode
+                        </div>
+
+                        <div className="docs-feature-desc">
+                        <br />
+                        <strong>Behavior:</strong><br />
+                        • &lt; 200 words → single prediction<br />
+                        • 200–999 → block 100 / stride 50<br />
+                        • 1,000–2,999 → block 150 / stride 75<br />
+                        • 3,000+ → block 200 / stride 100
+                        </div>
+                    </div>
+                    </div> */}
+                </section>
+
+                <section className="docs-section" id="arch">
+                    <div className="docs-eyebrow">Architecture</div>
+
+                    <h2 className="docs-title">Architecture Overview</h2>
+
+                    <p className="docs-lead">
+                        AIDetx2 supports two inference modes: <strong>Local</strong> and{' '}
+                        <strong>Backend</strong>. Both provide the same core detection functionality,
+                        but differ in where text processing and model inference take place.
+                    </p>
+
+                    <hr className="docs-divider" />
+
+                    <p className="docs-prose">
+                        In <strong>Local mode</strong>, the detection pipeline runs directly in the
+                        user's browser. Text processing and inference are performed client-side using
+                        <strong> ONNX Runtime Web</strong> and WebAssembly, allowing the submitted text
+                        to remain on the user's device.
+                    </p>
+
+                    <p className="docs-prose">
+                        In <strong>Backend mode</strong>, the frontend sends the submitted text to a
+                        <strong> FastAPI</strong> REST API, where processing and inference are performed
+                        on the server. The resulting predictions are then returned to the frontend
+                        for presentation.
+                    </p>
+
+                    <p className="docs-prose">
+                        These two approaches provide different trade-offs between privacy, offline
+                        availability, and computational resources. The following sections describe
+                        each architecture in more detail and compare their main characteristics.
+                    </p>
+                </section>
+
+                {/* ───────────────── Backend Architecture ───────────────── */}
+                <section className="docs-section" id="arch-backend">
+
+                    <h2 className="docs-title">Backend Architecture</h2>
+
+                    <p className="docs-lead">
+                        In Backend mode, text processing and model inference are performed on the
+                        server through a FastAPI-based REST API. The frontend communicates with the
+                        API for each analysis request, and the resulting predictions are returned
+                        to the browser.
+                    </p>
+
+                    <hr className="docs-divider" />
+
+                    <h3 className="docs-h2">How a request flows through the system</h3>
+                    
+                    <p className="docs-prose">
+                        The React + Vite frontend sends the submitted text to the FastAPI REST API.
+                        The backend then processes the input, normalizing and segmenting the text
+                        when necessary before preparing it for inference.
+                    </p>
+
+                    <p className="docs-prose">
+                        The backend supports two model families: classical{' '}
+                        <a href="/models#ml">Machine Learning</a> classifiers,
+                        which operate on the extracted feature set, and{' '}
+                        <a href="/models#dl">Deep Learning</a> models (BERT-based),
+                        which operate directly on the text. After inference, the prediction results
+                        are returned by FastAPI to the frontend for presentation.
+                    </p>
+
+                    <div className="docs-note">
+                        <i className="ti ti-alert-circle" aria-hidden="true" />
+                        <div>
+                            <strong>Note:</strong> the deployed backend currently uses only the
+                            Machine Learning models. The Deep Learning (BERT) models are implemented
+                            and available in the codebase, but are not active in production because
+                            of the resource requirements of the hosting environment.
+                        </div>
+                    </div>
+
+                    {/* <div className="docs-diagram">
+                        <svg width="100%" viewBox="0 0 680 610" style={{ fontFamily: 'inherit' }}>
                             <defs>
-                            <marker id="arrowW" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <marker id="arrowB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                                 <path d="M2 1L8 5L2 9" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                             </marker>
                             </defs>
 
-                            {/* User opens web application */}
-                            <rect x="240" y="16" width="220" height="40" rx="20" fill="#fff" stroke="#333" strokeWidth="1" />
-                            <text x="350" y="40" textAnchor="middle" fontSize="14">User opens web application</text>
-                            <line x1="350" y1="56" x2="350" y2="96" stroke="#333" strokeWidth="1" markerEnd="url(#arrowW)" />
+                            
+                            <rect x="310" y="16" width="100" height="36" rx="18" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="39" textAnchor="middle" fontSize="14">User</text>
+                            <line x1="360" y1="52" x2="360" y2="104" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
 
-                            {/* Enter text */}
-                            <rect x="230" y="96" width="240" height="56" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                            <text x="350" y="118" textAnchor="middle" fontSize="14">Enter text</text>
-                            <text x="350" y="138" textAnchor="middle" fontSize="12" fill="#666">type, paste, or upload a document</text>
-                            <line x1="350" y1="152" x2="350" y2="192" stroke="#333" strokeWidth="1" markerEnd="url(#arrowW)" />
+                            
+                            <rect x="220" y="70" width="280" height="90" rx="10" fill="#f5f7fb" stroke="#3355aa" strokeWidth="1" />
+                            <text x="236" y="90" fontSize="13" fontWeight="600" fill="#3355aa">Frontend</text>
+                            <rect x="270" y="104" width="180" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="130" textAnchor="middle" fontSize="14">React + Vite</text>
 
-                            {/* Extract text */}
-                            <rect x="270" y="192" width="160" height="36" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                            <text x="350" y="214" textAnchor="middle" fontSize="14">Extract text</text>
-                            <line x1="350" y1="228" x2="350" y2="264" stroke="#333" strokeWidth="1" markerEnd="url(#arrowW)" />
+                            
+                            <line x1="360" y1="160" x2="360" y2="270" stroke="#333" strokeWidth="1" markerStart="url(#arrowB)" markerEnd="url(#arrowB)" />
+                            <rect x="330" y="204" width="80" height="20" fill="#eee" />
+                            <text x="370" y="218" textAnchor="middle" fontSize="12" fill="#555">REST API</text>
 
-                            {/* Configure detection */}
-                            <rect x="250" y="264" width="200" height="36" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                            <text x="350" y="286" textAnchor="middle" fontSize="14">Configure detection</text>
-                            <line x1="350" y1="300" x2="350" y2="336" stroke="#333" strokeWidth="1" markerEnd="url(#arrowW)" />
+                            
+                            <rect x="150" y="230" width="440" height="340" rx="10" fill="#f7f7f7" stroke="#333" strokeWidth="1" />
+                            <text x="166" y="250" fontSize="13" fontWeight="600">Backend</text>
 
-                            {/* Deployment mode diamond */}
-                            <polygon points="350,336 430,406 350,476 270,406" fill="#fff" stroke="#6a3fa0" strokeWidth="1" />
-                            <text x="350" y="406" textAnchor="middle" fontSize="14">Deployment mode</text>
+                            <rect x="280" y="270" width="160" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="296" textAnchor="middle" fontSize="14">FastAPI REST API</text>
+                            <line x1="360" y1="314" x2="360" y2="350" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
 
-                            {/* Branches to local/backend */}
-                            <path d="M350 476 L250 520" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowW)" />
-                            <path d="M350 476 L450 520" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowW)" />
+                            <rect x="280" y="350" width="160" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="376" textAnchor="middle" fontSize="14">Text processing</text>
+                            <line x1="360" y1="394" x2="360" y2="430" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
 
-                            <rect x="150" y="520" width="200" height="56" rx="6" fill="#f5f7fb" stroke="#333" strokeWidth="1" />
-                            <text x="250" y="542" textAnchor="middle" fontSize="14">Client-side inference</text>
-                            <text x="250" y="562" textAnchor="middle" fontSize="12" fill="#666">ONNX Runtime Web (WASM)</text>
+                            <rect x="280" y="430" width="160" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="456" textAnchor="middle" fontSize="14">Detection models</text>
 
-                            <rect x="380" y="520" width="180" height="56" rx="6" fill="#f5f7fb" stroke="#333" strokeWidth="1" />
-                            <text x="470" y="542" textAnchor="middle" fontSize="14">FastAPI backend</text>
-                            <text x="470" y="562" textAnchor="middle" fontSize="12" fill="#666">server-side inference</text>
+                            <path d="M360 474 L360 490 L260 490 L260 506" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
 
-                            {/* Merge back to single flow */}
-                            <path d="M250 576 L250 604 L350 604" fill="none" stroke="#333" strokeWidth="1" />
-                            <path d="M470 576 L470 604 L350 604" fill="none" stroke="#333" strokeWidth="1" />
-                            <line x1="350" y1="604" x2="350" y2="620" stroke="#333" strokeWidth="1" markerEnd="url(#arrowW)" />
+                            <rect x="180" y="506" width="160" height="44" rx="6" fill="#eef2fb" stroke="#333" strokeWidth="1" />
+                            <text x="260" y="532" textAnchor="middle" fontSize="14">Machine learning</text>
 
-                            {/* Generate sliding windows */}
-                            <rect x="250" y="620" width="200" height="36" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                            <text x="350" y="642" textAnchor="middle" fontSize="14">Generate sliding windows</text>
-                            <line x1="350" y1="656" x2="350" y2="692" stroke="#333" strokeWidth="1" markerEnd="url(#arrowW)" />
-
-                            {/* Classify text blocks */}
-                            <rect x="260" y="692" width="180" height="36" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                            <text x="350" y="714" textAnchor="middle" fontSize="14">Classify text blocks</text>
-                            <line x1="350" y1="728" x2="350" y2="764" stroke="#333" strokeWidth="1" markerEnd="url(#arrowW)" />
-
-                            {/* Aggregate predictions */}
-                            <rect x="255" y="764" width="190" height="36" rx="6" fill="#eef2fb" stroke="#333" strokeWidth="1" />
-                            <text x="350" y="786" textAnchor="middle" fontSize="14">Aggregate predictions</text>
-                            <line x1="350" y1="800" x2="350" y2="836" stroke="#333" strokeWidth="1" markerEnd="url(#arrowW)" />
-
-                            {/* Overall document classification */}
-                            <rect x="215" y="836" width="270" height="44" rx="6" fill="#eef7ee" stroke="#333" strokeWidth="1" />
-                            <text x="350" y="864" textAnchor="middle" fontSize="14">Overall document classification</text>
+                            <path d="M440 452 C 555 452 555 292 440 292" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
                         </svg>
-                    </div>
-                </div>
-            </section>
-
-            {/* ───────────────── Window ───────────────── */}
-
-            <section className="docs-section" id="window">
-
-            <h1 className="docs-title">Sliding Window Segmentation</h1>
-
-            <p className="docs-lead">
-                AIDetx2 uses an overlapping sliding window strategy to divide documents into
-                smaller text segments that can be analyzed independently by the detection models.
-            </p>
-
-            <hr className="docs-divider" />
-
-            <p className="docs-prose">
-                Instead of processing an entire document as a single input, the text is split
-                into multiple overlapping blocks. Each block is independently analyzed, allowing
-                the system to detect localized AI-generated patterns across different regions of
-                the document.
-            </p>
-
-
-            <p className="docs-prose">
-                This approach is particularly useful for identifying hybrid documents that contain
-                both human-written and AI-generated content. By analyzing smaller segments
-                independently, AIDetx2 can detect isolated AI-generated regions even when they
-                are embedded within predominantly human-written text.
-            </p>
-
-            <p className="docs-prose">
-                The overlap between consecutive blocks is controlled through a configurable
-                stride value. This overlap helps reduce boundary effects, improves contextual
-                continuity between segments, and increases the stability of the final prediction.
-            </p>
-
-            <p className="docs-prose">
-                AIDetx2 supports two segmentation modes: a word-based sliding window and a
-                character-based sliding window. Depending on the selected mode and the size
-                of the submitted document, the system automatically determines the most
-                appropriate window size and stride configuration.
-            </p>
-
-            <p className="docs-prose">
-                Smaller documents may be processed as a single segment, while larger documents
-                are divided into multiple overlapping windows to improve detection accuracy
-                and provide more detailed segment-level analysis.
-            </p>
-
-            <hr className="docs-divider" />
-
-            <div className="docs-feature-grid">
-            <div className="docs-feature-card">
-                <div className="docs-feature-icon">
-                <i className="ti ti-text-size" />
-                </div>
-
-                <div className="docs-feature-name">
-                Character mode
-                </div>
-
-                <div className="docs-feature-desc">
-                <br />
-                <strong>Behavior:</strong><br />
-                • &lt; 1,000 chars → single prediction<br />
-                • 1,000–4,999 → block 500 / stride 250<br />
-                • 5,000–14,999 → block 750 / stride 375<br />
-                • 15,000+ → block 1,000 / stride 500
-                </div>
-            </div>
-
-            <div className="docs-feature-card">
-                <div className="docs-feature-icon">
-                <i className="ti ti-align-left" />
-                </div>
-
-                <div className="docs-feature-name">
-                Word mode
-                </div>
-
-                <div className="docs-feature-desc">
-                <br />
-                <strong>Behavior:</strong><br />
-                • &lt; 200 words → single prediction<br />
-                • 200–999 → block 100 / stride 50<br />
-                • 1,000–2,999 → block 150 / stride 75<br />
-                • 3,000+ → block 200 / stride 100
-                </div>
-            </div>
-            </div>
-
-            {/* ───────────────── Backend Architecture ───────────────── */}
-            <section className="docs-section" id="arch-backend">
-            <div className="docs-eyebrow">Architecture</div>
-
-            <h1 className="docs-title">Backend Architecture</h1>
-
-            <p className="docs-lead">
-                The backend version runs detection entirely server-side, exposing a
-                REST API that the frontend calls for every analysis request.
-            </p>
-
-            <hr className="docs-divider" />
-
-            <h2 className="docs-h2">How a request flows through the system</h2>
-
-            <p className="docs-prose">
-                The React + Vite frontend sends the submitted text to a FastAPI-based
-                REST API. The API forwards the text to the processing layer, where it
-                is normalized and segmented before being passed to the detection
-                models.
-            </p>
-
-            <p className="docs-prose">
-                Detection itself is split across two model families: classical{' '}
-                <a href="/AIDetx2-Frontend/models#ml">Machine Learning</a> classifiers
-                running on the extracted feature set, and <a href="/AIDetx2-Frontend/models#dl">Deep
-                Learning</a> models (BERT-based) operating directly on the text. Once a
-                prediction is produced, FastAPI returns the result back to the frontend
-                for rendering.
-            </p>
-
-            <div className="docs-note">
-                <i className="ti ti-alert-circle" aria-hidden="true" />
-                <div>
-                    <strong>Note:</strong> the deployed backend currently only runs the
-                    Machine Learning models. The Deep Learning (BERT) models are
-                    implemented and available in the codebase, but are not active in
-                    production due to the resource requirements of the hosting
-                    environment.
-                </div>
-            </div>
-
-            <div className="docs-diagram">
-                <svg width="100%" viewBox="0 0 680 610" style={{ fontFamily: 'inherit' }}>
-                    <defs>
-                    <marker id="arrowB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M2 1L8 5L2 9" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </marker>
-                    </defs>
-
-                    {/* User */}
-                    <rect x="310" y="16" width="100" height="36" rx="18" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="39" textAnchor="middle" fontSize="14">User</text>
-                    <line x1="360" y1="52" x2="360" y2="104" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
-
-                    {/* Frontend container */}
-                    <rect x="220" y="70" width="280" height="90" rx="10" fill="#f5f7fb" stroke="#3355aa" strokeWidth="1" />
-                    <text x="236" y="90" fontSize="13" fontWeight="600" fill="#3355aa">Frontend</text>
-                    <rect x="270" y="104" width="180" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="130" textAnchor="middle" fontSize="14">React + Vite</text>
-
-                    {/* REST API bidirectional arrow */}
-                    <line x1="360" y1="160" x2="360" y2="270" stroke="#333" strokeWidth="1" markerStart="url(#arrowB)" markerEnd="url(#arrowB)" />
-                    <rect x="330" y="204" width="80" height="20" fill="#eee" />
-                    <text x="370" y="218" textAnchor="middle" fontSize="12" fill="#555">REST API</text>
-
-                    {/* Backend container */}
-                    <rect x="150" y="230" width="440" height="340" rx="10" fill="#f7f7f7" stroke="#333" strokeWidth="1" />
-                    <text x="166" y="250" fontSize="13" fontWeight="600">Backend</text>
-
-                    <rect x="280" y="270" width="160" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="296" textAnchor="middle" fontSize="14">FastAPI REST API</text>
-                    <line x1="360" y1="314" x2="360" y2="350" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
-
-                    <rect x="280" y="350" width="160" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="376" textAnchor="middle" fontSize="14">Text processing</text>
-                    <line x1="360" y1="394" x2="360" y2="430" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
-
-                    <rect x="280" y="430" width="160" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="456" textAnchor="middle" fontSize="14">Detection models</text>
-
-                    <path d="M360 474 L360 490 L260 490 L260 506" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
-                    <path d="M360 474 L360 490 L467 490 L467 506" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
-
-                    <rect x="180" y="506" width="160" height="44" rx="6" fill="#eef2fb" stroke="#333" strokeWidth="1" />
-                    <text x="260" y="532" textAnchor="middle" fontSize="14">Machine learning</text>
-
-                    <rect x="370" y="506" width="195" height="44" rx="6" fill="#fbeeee" stroke="#333" strokeWidth="1" />
-                    <text x="467" y="532" textAnchor="middle" fontSize="14">Deep learning (BERT)</text>
-
-                    {/* Feedback loop back to FastAPI */}
-                    <path d="M440 452 C 555 452 555 292 440 292" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowB)" />
-                </svg>
-            </div>
-
-            <p className="docs-prose">
-                Because inference happens on the server, the backend version can run
-                larger, more accurate models without being constrained by the user's
-                device, at the cost of requiring a network round-trip for every
-                analysis.
-            </p>
-            </section>
-
-            {/* ───────────────── Local Architecture ───────────────── */}
-
-            <section className="docs-section" id="arch-local">
-            <div className="docs-eyebrow">Architecture</div>
-
-            <h1 className="docs-title">Local Architecture</h1>
-
-            <p className="docs-lead">
-                The local version runs entirely in the browser — no server round-trip
-                is needed, and no text ever leaves the user's device.
-            </p>
-
-            <hr className="docs-divider" />
-
-            <h2 className="docs-h2">How a request flows through the system</h2>
-
-            <p className="docs-prose">
-                Instead of calling a remote API, the React + Vite frontend hands the
-                submitted text to a local inference engine running in the same page.
-                This engine performs the same text processing steps as the backend
-                version, but then routes the result to{' '}
-                <strong>ONNX Runtime Web</strong>, which executes the detection models
-                directly in the browser via WebAssembly.
-            </p>
-
-            <p className="docs-prose">
-                As with the backend version, detection relies on the same Machine Learning classifiers — the difference is that inference now
-                runs client-side, compiled to a WebAssembly target via ONNX Runtime Web
-                instead of a Python server process.
-            </p>
-
-            <div className="docs-note">
-                <i className="ti ti-alert-circle" aria-hidden="true" />
-                <div>
-                    <strong>Note:</strong> the local version does not currently support
-                    the Deep Learning (BERT) models. The trained models are too large
-                    to run efficiently in the browser, so only the Machine Learning
-                    classifiers are available client-side.
-                </div>
-            </div>
-
-            <div className="docs-diagram">
-                <svg width="100%" viewBox="0 0 680 660" style={{ fontFamily: 'inherit' }}>
-                    <defs>
-                    <marker id="arrowL" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                        <path d="M2 1L8 5L2 9" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </marker>
-                    </defs>
-
-                    {/* User */}
-                    <rect x="310" y="16" width="100" height="36" rx="18" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="39" textAnchor="middle" fontSize="14">User</text>
-                    <line x1="360" y1="52" x2="360" y2="68" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
-
-                    <rect x="310" y="68" width="100" height="40" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="93" textAnchor="middle" fontSize="14">UI</text>
-                    <line x1="360" y1="108" x2="360" y2="140" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
-
-                    {/* Browser/frontend container */}
-                    <rect x="150" y="140" width="440" height="480" rx="10" fill="#f5f7fb" stroke="#3355aa" strokeWidth="1" />
-                    <text x="166" y="160" fontSize="13" fontWeight="600" fill="#3355aa">Frontend (browser)</text>
-
-                    <rect x="270" y="180" width="180" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="206" textAnchor="middle" fontSize="14">React + Vite</text>
-                    <line x1="360" y1="224" x2="360" y2="250" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
-
-                    <rect x="255" y="250" width="210" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="276" textAnchor="middle" fontSize="14">Local inference engine</text>
-                    <line x1="360" y1="294" x2="360" y2="320" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
-
-                    <rect x="280" y="320" width="160" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="346" textAnchor="middle" fontSize="14">Text processing</text>
-                    <line x1="360" y1="364" x2="360" y2="390" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
-
-                    <rect x="265" y="390" width="190" height="56" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="412" textAnchor="middle" fontSize="14">ONNX Runtime Web</text>
-                    <text x="360" y="430" textAnchor="middle" fontSize="12" fill="#666">WebAssembly</text>
-                    <line x1="360" y1="446" x2="360" y2="470" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
-
-                    <rect x="280" y="470" width="160" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
-                    <text x="360" y="496" textAnchor="middle" fontSize="14">Detection models</text>
-
-                    <path d="M360 514 L360 530 L260 530 L260 546" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
-                    <path d="M360 514 L360 530 L467 530 L467 546" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
-
-                    <rect x="180" y="546" width="160" height="44" rx="6" fill="#eef2fb" stroke="#333" strokeWidth="1" />
-                    <text x="260" y="572" textAnchor="middle" fontSize="14">Machine learning</text>
-
-                    <rect x="370" y="546" width="195" height="44" rx="6" fill="#fbeeee" stroke="#333" strokeWidth="1" />
-                    <text x="467" y="572" textAnchor="middle" fontSize="14">Deep learning (BERT)</text>
-
-                    {/* Feedback loop back to inference engine */}
-                    <path d="M440 492 C 545 492 545 272 465 272" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
-                </svg>
-            </div>
-            </section>
-            </section>
-
-            {/* ───────────────── Local vs Backend ───────────────── */}
-            <section className="docs-section" id="comparison">
-
-                <h1 className="docs-title">Local vs. Backend: which should I use?</h1>
-
-                <p className="docs-lead">
-                    Both versions run the same detection pipeline — the difference is
-                    where inference happens. They rely on the same underlying models and
-                    feature formulas, but since the local version reimplements feature
-                    extraction in a different language than the backend, some feature
-                    values may differ slightly between the two. This does not meaningfully
-                    affect classification results.
-                </p>
-
-                <hr className="docs-divider" />
-
-                <div className="docs-table-wrapper">
-                    <table className="docs-table">
-                    <thead>
-                        <tr>
-                        <th></th>
-                        <th>Local</th>
-                        <th>Backend</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                        <td>Where inference runs</td>
-                        <td>In-browser (ONNX Runtime Web / WASM)</td>
-                        <td>Server (FastAPI + Python)</td>
-                        </tr>
-                        <tr>
-                        <td>Data leaves your device?</td>
-                        <td>No — text never leaves the browser</td>
-                        <td>Yes — text is sent to the API for analysis</td>
-                        </tr>
-                        <tr>
-                        <td>Works offline?</td>
-                        <td>Yes, after the initial page load</td>
-                        <td>No — requires a network connection</td>
-                        </tr>
-                        <tr>
-                        <td>Speed</td>
-                        <td>Depends on device hardware</td>
-                        <td>Consistent, server-controlled</td>
-                        </tr>
-                        <tr>
-                        <td>Deep Learning (BERT) support</td>
-                        <td>Not available — model is too large to run in the browser</td>
-                        <td>Implemented, but not currently deployed due to hosting resource limits</td>
-                        </tr>
-                        <tr>
-                        <td>Currently available models</td>
-                        <td>Machine Learning only</td>
-                        <td>Machine Learning only</td>
-                        </tr>
-                        <tr>
-                        <td>Best for</td>
-                        <td>Privacy-sensitive or offline use</td>
-                        <td>Easier setup — no local install required</td>
-                        </tr>
-                    </tbody>
-                    </table>
-                </div>
-            </section>
-
-            {/* ───────────────── App Features ───────────────── */}
-
-            <section className="docs-section" id="app-features">
-            <div className="docs-eyebrow">Features</div>
-
-            <h1 className="docs-title">App features</h1>
-
-            <p className="docs-lead">
-                Everything available in the interface.
-            </p>
-
-            <hr className="docs-divider" />
-
-            <div className="docs-feature-grid">
-                {appFeatures.map((f) => (
-                <div className="docs-feature-card" key={f.name}>
-                    <div className="docs-feature-icon">
-                    <i className={`ti ${f.icon}`} />
-                    </div>
-
-                    <div className="docs-feature-name">
-                    {f.name}
-                    </div>
-
-                    <div className="docs-feature-desc">
-                    {f.desc}
-                    </div>
-                </div>
-                ))}
-            </div>
-            </section>
-
-            {/* ───────────────── FAQ ───────────────── */}
-            <section className="docs-section" id="faq">
-                <div className="docs-eyebrow">Reference</div>
-
-                <h1 className="docs-title">FAQ</h1>
-
-                <p className="docs-lead">
-                    Quick answers to common questions.
-                </p>
-
-                <hr className="docs-divider" />
-
-                <div className="docs-faq-list">
-                    {faqItems.map((item, i) => {
-                        const isOpen = openFaq === i
-                        return (
-                            <div className="docs-faq-item" key={item.q}>
-                                <button
-                                    className="docs-faq-question"
-                                    onClick={() => setOpenFaq(isOpen ? null : i)}
-                                    aria-expanded={isOpen}
+                    </div> */}
+
+                    <div className="docs-diagram">
+                        <svg width="100%" viewBox="0 0 680 610" style={{ fontFamily: 'inherit' }}>
+                            <defs>
+                                <marker
+                                    id="arrowB"
+                                    viewBox="0 0 10 10"
+                                    refX="8"
+                                    refY="5"
+                                    markerWidth="6"
+                                    markerHeight="6"
+                                    orient="auto-start-reverse"
                                 >
-                                    <span>{item.q}</span>
-                                    <i className={`ti ti-chevron-down docs-faq-chevron ${isOpen ? 'open' : ''}`} />
-                                </button>
+                                    <path
+                                        d="M2 1L8 5L2 9"
+                                        fill="none"
+                                        stroke="#333"
+                                        strokeWidth="1.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </marker>
+                            </defs>
 
-                                <div className={`docs-faq-answer ${isOpen ? 'open' : ''}`}>
-                                    <div className="docs-faq-answer-inner">
-                                        {item.a}
+                            {/* User */}
+                            <rect
+                                x="310"
+                                y="16"
+                                width="100"
+                                height="36"
+                                rx="18"
+                                fill="#fff"
+                                stroke="#333"
+                                strokeWidth="1"
+                            />
+                            <text x="360" y="39" textAnchor="middle" fontSize="14">
+                                User
+                            </text>
+
+                            <line
+                                x1="360"
+                                y1="52"
+                                x2="360"
+                                y2="104"
+                                stroke="#333"
+                                strokeWidth="1"
+                                markerEnd="url(#arrowB)"
+                            />
+
+                            {/* Frontend container */}
+                            <rect
+                                x="220"
+                                y="70"
+                                width="280"
+                                height="90"
+                                rx="10"
+                                fill="#f5f7fb"
+                                stroke="#3355aa"
+                                strokeWidth="1"
+                            />
+                            <text
+                                x="236"
+                                y="90"
+                                fontSize="13"
+                                fontWeight="600"
+                                fill="#3355aa"
+                            >
+                                Frontend
+                            </text>
+
+                            <rect
+                                x="270"
+                                y="104"
+                                width="180"
+                                height="44"
+                                rx="6"
+                                fill="#fff"
+                                stroke="#333"
+                                strokeWidth="1"
+                            />
+                            <text x="360" y="130" textAnchor="middle" fontSize="14">
+                                React + Vite
+                            </text>
+
+                            {/* REST API bidirectional arrow */}
+                            <line
+                                x1="360"
+                                y1="160"
+                                x2="360"
+                                y2="270"
+                                stroke="#333"
+                                strokeWidth="1"
+                                markerStart="url(#arrowB)"
+                                markerEnd="url(#arrowB)"
+                            />
+
+                            <rect x="330" y="204" width="80" height="20" fill="#eee" />
+                            <text x="370" y="218" textAnchor="middle" fontSize="12" fill="#555">
+                                REST API
+                            </text>
+
+                            {/* Backend container */}
+                            <rect
+                                x="150"
+                                y="230"
+                                width="440"
+                                height="340"
+                                rx="10"
+                                fill="#f7f7f7"
+                                stroke="#333"
+                                strokeWidth="1"
+                            />
+                            <text x="166" y="250" fontSize="13" fontWeight="600">
+                                Backend
+                            </text>
+
+                            <rect
+                                x="280"
+                                y="270"
+                                width="160"
+                                height="44"
+                                rx="6"
+                                fill="#fff"
+                                stroke="#333"
+                                strokeWidth="1"
+                            />
+                            <text x="360" y="296" textAnchor="middle" fontSize="14">
+                                FastAPI REST API
+                            </text>
+
+                            <line
+                                x1="360"
+                                y1="314"
+                                x2="360"
+                                y2="350"
+                                stroke="#333"
+                                strokeWidth="1"
+                                markerEnd="url(#arrowB)"
+                            />
+
+                            <rect
+                                x="280"
+                                y="350"
+                                width="160"
+                                height="44"
+                                rx="6"
+                                fill="#fff"
+                                stroke="#333"
+                                strokeWidth="1"
+                            />
+                            <text x="360" y="376" textAnchor="middle" fontSize="14">
+                                Text processing
+                            </text>
+
+                            <line
+                                x1="360"
+                                y1="394"
+                                x2="360"
+                                y2="430"
+                                stroke="#333"
+                                strokeWidth="1"
+                                markerEnd="url(#arrowB)"
+                            />
+
+                            <rect
+                                x="280"
+                                y="430"
+                                width="160"
+                                height="44"
+                                rx="6"
+                                fill="#fff"
+                                stroke="#333"
+                                strokeWidth="1"
+                            />
+                            <text x="360" y="456" textAnchor="middle" fontSize="14">
+                                Detection models
+                            </text>
+
+                            <path
+                                d="M360 474 L360 506"
+                                fill="none"
+                                stroke="#333"
+                                strokeWidth="1"
+                                markerEnd="url(#arrowB)"
+                            />
+
+                            <rect
+                                x="280"
+                                y="506"
+                                width="160"
+                                height="44"
+                                rx="6"
+                                fill="#eef2fb"
+                                stroke="#333"
+                                strokeWidth="1"
+                            />
+
+                            <text x="360" y="532" textAnchor="middle" fontSize="14">
+                                Machine learning
+                            </text>
+
+
+                            {/* Return path to FastAPI */}
+                            <path
+                                d="M440 452 C555 452 555 292 440 292"
+                                fill="none"
+                                stroke="#333"
+                                strokeWidth="1"
+                                markerEnd="url(#arrowB)"
+                            />
+                        </svg>
+                        <p className="docs-diagram-caption">
+                            Backend inference flow: the submitted text is sent from the frontend to
+                            FastAPI, processed on the server, and passed to the Machine Learning models
+                            before the prediction is returned.
+                        </p>
+                    </div>
+
+                     <p className="docs-prose">
+                        Because inference is performed on the server, the backend is not limited by
+                        the computational and memory constraints of the user's device. This makes it
+                        possible to deploy models and processing pipelines that may be impractical to
+                        run directly in the browser. The trade-off is that each analysis requires a
+                        network connection and a round-trip between the frontend and backend.
+                    </p>
+                </section>
+
+                {/* ───────────────── Local Architecture ───────────────── */}
+
+                <section className="docs-section" id="arch-local">
+
+                    <h2 className="docs-title">Local Architecture</h2>
+
+                    <p className="docs-lead">
+                        In Local mode, text processing and model inference run entirely in the
+                        browser. No server round-trip is required, and the submitted text never
+                        leaves the user's device.
+                    </p>
+
+                    <hr className="docs-divider" />
+
+                    <h3 className="docs-h2">How a request flows through the system</h3>
+
+                    <p className="docs-prose">
+                        Instead of sending the submitted text to a remote API, the React + Vite
+                        frontend passes it to a local inference engine running in the browser.
+                        The engine performs the required text processing and feature extraction
+                        before passing the prepared input to <strong>ONNX Runtime Web</strong>,
+                        which executes the detection models locally using WebAssembly.
+                    </p>
+
+                    <p className="docs-prose">
+                        As with the backend mode, detection relies on the same Machine Learning
+                        classifiers. The difference is that inference is performed directly in
+                        the browser using ONNX Runtime Web, with WebAssembly providing the
+                        execution environment instead of a Python server process.
+                    </p>
+
+                    <div className="docs-note">
+                        <i className="ti ti-alert-circle" aria-hidden="true" />
+                        <div>
+                            <strong>Note:</strong> the local version does not currently support
+                            the Deep Learning (BERT) models. The trained models are too large
+                            to run efficiently in the browser, so only the Machine Learning
+                            classifiers are available client-side.
+                        </div>
+                    </div>
+
+                    {/* <div className="docs-diagram">
+                        <svg width="100%" viewBox="0 0 680 660" style={{ fontFamily: 'inherit' }}>
+                            <defs>
+                            <marker id="arrowL" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                <path d="M2 1L8 5L2 9" fill="none" stroke="#333" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </marker>
+                            </defs>
+
+                            <rect x="310" y="16" width="100" height="36" rx="18" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="39" textAnchor="middle" fontSize="14">User</text>
+                            <line x1="360" y1="52" x2="360" y2="68" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
+
+                            <rect x="310" y="68" width="100" height="40" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="93" textAnchor="middle" fontSize="14">UI</text>
+                            <line x1="360" y1="108" x2="360" y2="140" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
+
+                            <rect x="150" y="140" width="440" height="480" rx="10" fill="#f5f7fb" stroke="#3355aa" strokeWidth="1" />
+                            <text x="166" y="160" fontSize="13" fontWeight="600" fill="#3355aa">Frontend (browser)</text>
+
+                            <rect x="270" y="180" width="180" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="206" textAnchor="middle" fontSize="14">React + Vite</text>
+                            <line x1="360" y1="224" x2="360" y2="250" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
+
+                            <rect x="255" y="250" width="210" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="276" textAnchor="middle" fontSize="14">Local inference engine</text>
+                            <line x1="360" y1="294" x2="360" y2="320" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
+
+                            <rect x="280" y="320" width="160" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="346" textAnchor="middle" fontSize="14">Text processing</text>
+                            <line x1="360" y1="364" x2="360" y2="390" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
+
+                            <rect x="265" y="390" width="190" height="56" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="412" textAnchor="middle" fontSize="14">ONNX Runtime Web</text>
+                            <text x="360" y="430" textAnchor="middle" fontSize="12" fill="#666">WebAssembly</text>
+                            <line x1="360" y1="446" x2="360" y2="470" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
+
+                            <rect x="280" y="470" width="160" height="44" rx="6" fill="#fff" stroke="#333" strokeWidth="1" />
+                            <text x="360" y="496" textAnchor="middle" fontSize="14">Detection models</text>
+
+                            <path d="M360 514 L360 530 L260 530 L260 546" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
+                            <path d="M360 514 L360 530 L467 530 L467 546" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
+
+                            <rect x="180" y="546" width="160" height="44" rx="6" fill="#eef2fb" stroke="#333" strokeWidth="1" />
+                            <text x="260" y="572" textAnchor="middle" fontSize="14">Machine learning</text>
+
+                            <rect x="370" y="546" width="195" height="44" rx="6" fill="#fbeeee" stroke="#333" strokeWidth="1" />
+                            <text x="467" y="572" textAnchor="middle" fontSize="14">Deep learning (BERT)</text>
+
+                            <path d="M440 492 C 545 492 545 272 465 272" fill="none" stroke="#333" strokeWidth="1" markerEnd="url(#arrowL)" />
+                        </svg>
+                    </div> */}
+
+                    <div className="docs-diagram">
+                        <div className="docs-diagram-visual">
+                            <svg
+                                width="100%"
+                                viewBox="0 0 680 610"
+                                style={{ fontFamily: 'inherit' }}
+                                role="img"
+                                aria-labelledby="local-architecture-diagram-title"
+                            >
+                                <title id="local-architecture-diagram-title">
+                                    Local inference architecture, from user input to Machine Learning models
+                                </title>
+
+                                <defs>
+                                    <marker
+                                        id="arrowL"
+                                        viewBox="0 0 10 10"
+                                        refX="8"
+                                        refY="5"
+                                        markerWidth="6"
+                                        markerHeight="6"
+                                        orient="auto-start-reverse"
+                                    >
+                                        <path
+                                            d="M2 1L8 5L2 9"
+                                            fill="none"
+                                            stroke="#333"
+                                            strokeWidth="1.5"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    </marker>
+                                </defs>
+
+                                {/* User */}
+                                <rect
+                                    x="310"
+                                    y="16"
+                                    width="100"
+                                    height="36"
+                                    rx="18"
+                                    fill="#fff"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                />
+                                <text
+                                    x="360"
+                                    y="39"
+                                    textAnchor="middle"
+                                    fontSize="14"
+                                >
+                                    User
+                                </text>
+
+                                <line
+                                    x1="360"
+                                    y1="52"
+                                    x2="360"
+                                    y2="68"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                    markerEnd="url(#arrowL)"
+                                />
+
+                                {/* UI */}
+                                <rect
+                                    x="310"
+                                    y="68"
+                                    width="100"
+                                    height="40"
+                                    rx="6"
+                                    fill="#fff"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                />
+                                <text
+                                    x="360"
+                                    y="93"
+                                    textAnchor="middle"
+                                    fontSize="14"
+                                >
+                                    UI
+                                </text>
+
+                                <line
+                                    x1="360"
+                                    y1="108"
+                                    x2="360"
+                                    y2="140"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                    markerEnd="url(#arrowL)"
+                                />
+
+                                {/* Browser/frontend container */}
+                                <rect
+                                    x="150"
+                                    y="140"
+                                    width="440"
+                                    height="460"
+                                    rx="10"
+                                    fill="#f5f7fb"
+                                    stroke="#3355aa"
+                                    strokeWidth="1"
+                                />
+
+                                <text
+                                    x="166"
+                                    y="160"
+                                    fontSize="13"
+                                    fontWeight="600"
+                                    fill="#3355aa"
+                                >
+                                    Frontend (browser)
+                                </text>
+
+                                {/* React */}
+                                <rect
+                                    x="270"
+                                    y="180"
+                                    width="180"
+                                    height="44"
+                                    rx="6"
+                                    fill="#fff"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                />
+                                <text
+                                    x="360"
+                                    y="206"
+                                    textAnchor="middle"
+                                    fontSize="14"
+                                >
+                                    React + Vite
+                                </text>
+
+                                <line
+                                    x1="360"
+                                    y1="224"
+                                    x2="360"
+                                    y2="250"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                    markerEnd="url(#arrowL)"
+                                />
+
+                                {/* Local inference engine */}
+                                <rect
+                                    x="255"
+                                    y="250"
+                                    width="210"
+                                    height="44"
+                                    rx="6"
+                                    fill="#fff"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                />
+                                <text
+                                    x="360"
+                                    y="276"
+                                    textAnchor="middle"
+                                    fontSize="14"
+                                >
+                                    Local inference engine
+                                </text>
+
+                                <line
+                                    x1="360"
+                                    y1="294"
+                                    x2="360"
+                                    y2="320"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                    markerEnd="url(#arrowL)"
+                                />
+
+                                {/* Text processing */}
+                                <rect
+                                    x="280"
+                                    y="320"
+                                    width="160"
+                                    height="44"
+                                    rx="6"
+                                    fill="#fff"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                />
+                                <text
+                                    x="360"
+                                    y="346"
+                                    textAnchor="middle"
+                                    fontSize="14"
+                                >
+                                    Text processing
+                                </text>
+
+                                <line
+                                    x1="360"
+                                    y1="364"
+                                    x2="360"
+                                    y2="390"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                    markerEnd="url(#arrowL)"
+                                />
+
+                                {/* ONNX Runtime Web */}
+                                <rect
+                                    x="265"
+                                    y="390"
+                                    width="190"
+                                    height="56"
+                                    rx="6"
+                                    fill="#fff"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                />
+                                <text
+                                    x="360"
+                                    y="412"
+                                    textAnchor="middle"
+                                    fontSize="14"
+                                >
+                                    ONNX Runtime Web
+                                </text>
+                                <text
+                                    x="360"
+                                    y="430"
+                                    textAnchor="middle"
+                                    fontSize="12"
+                                    fill="#666"
+                                >
+                                    WebAssembly
+                                </text>
+
+                                <line
+                                    x1="360"
+                                    y1="446"
+                                    x2="360"
+                                    y2="470"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                    markerEnd="url(#arrowL)"
+                                />
+
+                                {/* Detection models */}
+                                <rect
+                                    x="280"
+                                    y="470"
+                                    width="160"
+                                    height="44"
+                                    rx="6"
+                                    fill="#fff"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                />
+                                <text
+                                    x="360"
+                                    y="496"
+                                    textAnchor="middle"
+                                    fontSize="14"
+                                >
+                                    Detection models
+                                </text>
+
+                                <line
+                                    x1="360"
+                                    y1="514"
+                                    x2="360"
+                                    y2="546"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                    markerEnd="url(#arrowL)"
+                                />
+
+                                {/* Machine Learning */}
+                                <rect
+                                    x="280"
+                                    y="546"
+                                    width="160"
+                                    height="44"
+                                    rx="6"
+                                    fill="#eef2fb"
+                                    stroke="#333"
+                                    strokeWidth="1"
+                                />
+                                <text
+                                    x="360"
+                                    y="572"
+                                    textAnchor="middle"
+                                    fontSize="14"
+                                >
+                                    Machine learning
+                                </text>
+                            </svg>
+                        </div>
+
+                        <p className="docs-diagram-caption">
+                            Local inference flow: the submitted text is processed entirely in the
+                            browser, with ONNX Runtime Web executing the Machine Learning models
+                            through WebAssembly.
+                        </p>
+                    </div>
+                </section>
+
+                {/* ───────────────── Local vs Backend ───────────────── */}
+                <section className="docs-section" id="comparison">
+
+                    <h2 className="docs-title">Local vs. Backend: which should I use?</h2>
+
+                    <p className="docs-lead">
+                        Both versions use the same detection pipeline, models, and feature definitions.
+                        The main difference is where processing and inference take place: Local mode runs
+                        entirely in the browser, while Backend mode sends the text to the server for
+                        processing. This results in different trade-offs in terms of privacy, offline
+                        availability, performance, and resource requirements.
+                    </p>
+
+                    <hr className="docs-divider" />
+
+                    <div className="docs-table-wrapper">
+                        <table className="docs-table">
+                        <thead>
+                            <tr>
+                            <th></th>
+                            <th>Local</th>
+                            <th>Backend</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                            <td>Where inference runs</td>
+                            <td>In-browser (ONNX Runtime Web / WASM)</td>
+                            <td>Server (FastAPI + Python)</td>
+                            </tr>
+                            <tr>
+                            <td>Data leaves your device?</td>
+                            <td>No — text never leaves the browser</td>
+                            <td>Yes — text is sent to the API for analysis</td>
+                            </tr>
+                            <tr>
+                            <td>Works offline?</td>
+                            <td>Yes, after the initial page load</td>
+                            <td>No — requires a network connection</td>
+                            </tr>
+                            <tr>
+                            <td>Speed</td>
+                            <td>Depends on device resources</td>
+                            <td>Consistent, server-controlled</td>
+                            </tr>
+                            <tr>
+                            <td>Deep Learning (BERT) support</td>
+                            <td>Not available — model is too large to run in the browser</td>
+                            <td>Implemented, but not currently deployed due to hosting resource limits</td>
+                            </tr>
+                            <tr>
+                            <td>Currently available models</td>
+                            <td>Machine Learning only</td>
+                            <td>Machine Learning only</td>
+                            </tr>
+                            <tr>
+                            <td>Best for</td>
+                            <td>Privacy, offline use, and on-device inference</td>
+                            <td>Centralized inference and access to server-side resources</td>
+                            </tr>
+                        </tbody>
+                        </table>
+                    </div>
+
+                    <div className="docs-note">
+                        <i className="ti ti-info-circle" aria-hidden="true" />
+                        <div>
+                            <strong>Implementation note:</strong> the local and backend versions implement
+                            feature extraction in different languages, so some feature values may differ
+                            slightly between the two. These differences do not meaningfully affect the
+                            resulting classification.
+                        </div>
+                    </div>
+                </section>
+
+                {/* ───────────────── App Features ───────────────── */}
+
+                <section className="docs-section" id="app-features">
+                <div className="docs-eyebrow">Features</div>
+
+                <h2 className="docs-title">App features</h2>
+
+                <p className="docs-lead">
+                    AIDetx2 combines AI detection, model attribution, segment-level analysis,
+                    and multiple inference options into a single text analysis interface.
+                </p>
+
+                <hr className="docs-divider" />
+
+                <div className="docs-feature-grid">
+                    {appFeatures.map((f) => (
+                    <div className="docs-feature-card" key={f.name}>
+                        <div className="docs-feature-icon">
+                        <i className={`ti ${f.icon}`} />
+                        </div>
+
+                        <div className="docs-feature-name">
+                        {f.name}
+                        </div>
+
+                        <div className="docs-feature-desc">
+                        {f.desc}
+                        </div>
+                    </div>
+                    ))}
+                </div>
+                </section>
+
+                {/* ───────────────── FAQ ───────────────── */}
+                <section className="docs-section" id="faq">
+                    <div className="docs-eyebrow">Reference</div>
+
+                    <h2 className="docs-title">FAQ</h2>
+
+                    <p className="docs-lead">
+                        Answers to common questions about detection, supported inputs, privacy,
+                        and how the results should be interpreted.
+                    </p>
+
+                    <hr className="docs-divider" />
+
+                    <div className="docs-faq-list">
+                        {faqItems.map((item, i) => {
+                            const isOpen = openFaq === i
+                            return (
+                                <div className="docs-faq-item" key={item.q}>
+                                    <button
+                                        className="docs-faq-question"
+                                        onClick={() => setOpenFaq(isOpen ? null : i)}
+                                        aria-expanded={isOpen}
+                                    >
+                                        <span>{item.q}</span>
+                                        <i className={`ti ti-chevron-down docs-faq-chevron ${isOpen ? 'open' : ''}`} />
+                                    </button>
+
+                                    <div className={`docs-faq-answer ${isOpen ? 'open' : ''}`}>
+                                        <div className="docs-faq-answer-inner">
+                                            {item.a}
+                                        </div>
                                     </div>
                                 </div>
+                            )
+                        })}
+                    </div>
+                </section>
+
+               <section className="docs-section" id="limitations">
+
+                    <h2 className="docs-title">Limitations & known issues</h2>
+
+                    <p className="docs-lead">
+                        AIDetx2 provides probabilistic predictions rather than definitive
+                        conclusions. Understanding its limitations is important when interpreting
+                        detection and model attribution results.
+                    </p>
+
+                    <hr className="docs-divider" />
+
+                    <div className="docs-limitation-grid">
+
+                        <div className="docs-limitation-card">
+                            <div className="docs-limitation-icon">
+                                <i className="ti ti-ruler-2" />
                             </div>
-                        )
-                    })}
-                </div>
-            </section>
+                            <div className="docs-limitation-content">
+                                <h3>Text length</h3>
+                                <p>
+                                    Very short inputs provide less information for the classifier
+                                    and can produce less reliable predictions. Features based on
+                                    sentence structure, vocabulary distribution, and repetition
+                                    become harder to estimate when there is very little text
+                                    available. Results on short snippets should therefore be
+                                    interpreted with caution.
+                                </p>
+                            </div>
+                        </div>
 
-            {/* ───────────────── Limitations ───────────────── 
-            <section className="docs-section" id="limitations">
-            <div className="docs-eyebrow">Reference</div>
+                        <div className="docs-limitation-card">
+                            <div className="docs-limitation-icon">
+                                <i className="ti ti-edit" />
+                            </div>
+                            <div className="docs-limitation-content">
+                                <h3>Heavily edited AI text</h3>
+                                <p>
+                                    Text that was originally AI-generated but has been
+                                    substantially rewritten, paraphrased, or mixed with human
+                                    edits may become harder to classify. Editing can alter the
+                                    statistical and stylistic patterns that the classifier relies
+                                    on, potentially making AI-generated text appear more similar
+                                    to human-written text.
+                                </p>
+                            </div>
+                        </div>
 
-            <h1 className="docs-title">Limitations & known issues</h1>
+                        <div className="docs-limitation-card">
+                            <div className="docs-limitation-icon">
+                                <i className="ti ti-language" />
+                            </div>
+                            <div className="docs-limitation-content">
+                                <h3>Language coverage</h3>
+                                <p>
+                                    AIDetx2 was developed and evaluated primarily on English-language
+                                    text. Its behavior on other languages is currently unverified,
+                                    so the reported results and confidence levels should not be
+                                    assumed to generalize beyond English.
+                                </p>
+                            </div>
+                        </div>
 
-            <p className="docs-lead">
-                AIDetx2 is a statistical classifier, not a certainty machine. It's worth
-                understanding where it's less reliable before treating a result as
-                definitive.
-            </p>
+                        <div className="docs-limitation-card">
+                            <div className="docs-limitation-icon">
+                                <i className="ti ti-shield-exclamation" />
+                            </div>
+                            <div className="docs-limitation-content">
+                                <h3>Evasion and adversarial input</h3>
+                                <p>
+                                    Like other statistical classifiers, AIDetx2 can be affected
+                                    by text that has been deliberately modified to obscure the
+                                    patterns used for detection. The system is intended as a
+                                    detection aid and should not be considered a security control
+                                    against deliberate attempts to evade classification.
+                                </p>
+                            </div>
+                        </div>
 
-            <hr className="docs-divider" />
+                        <div className="docs-limitation-card">
+                            <div className="docs-limitation-icon">
+                                <i className="ti ti-cpu" />
+                            </div>
+                            <div className="docs-limitation-content">
+                                <h3>Model attribution</h3>
+                                <p>
+                                    Identifying which AI model generated a text is more difficult
+                                    than the binary human/AI classification. Different models can
+                                    produce similar linguistic patterns, while newer, fine-tuned,
+                                    or previously unseen models may not match the patterns
+                                    represented in the training data. Model attribution should
+                                    therefore be interpreted as a probabilistic prediction, not
+                                    definitive identification.
+                                </p>
+                            </div>
+                        </div>
 
-            <h2 className="docs-h2">Text length</h2>
-            <p className="docs-prose">
-                Very short inputs give the sliding window little to work with — most
-                features (lexical richness, sentence length variance, entropy) become
-                noisy below a few hundred characters, so confidence on short snippets
-                should be treated cautiously.
-            </p>
+                        <div className="docs-limitation-card">
+                            <div className="docs-limitation-icon">
+                                <i className="ti ti-brand-openai" />
+                            </div>
+                            <div className="docs-limitation-content">
+                                <h3>Unseen AI models</h3>
+                                <p>
+                                    Model attribution is limited to the patterns learned from the
+                                    supported generator classes. Text produced by an AI model that
+                                    was not represented during training may be incorrectly
+                                    attributed to one of the supported models, particularly when
+                                    its writing patterns resemble an existing class.
+                                </p>
+                            </div>
+                        </div>
 
-            <h2 className="docs-h2">Heavily edited AI text</h2>
-            <p className="docs-prose">
-                Text that started as AI-generated but was substantially rewritten,
-                paraphrased, or mixed with human edits can fall in between the two
-                classes. The stylometric signals AIDetx2 relies on (repetition,
-                burstiness, vocabulary distribution) are the first to blur under
-                manual editing.
-            </p>
-
-            <h2 className="docs-h2">Language coverage</h2>
-            <p className="docs-prose">
-                The extracted features and models were built and tuned primarily on
-                English text. Behavior on other languages is currently unverified and
-                should not be assumed to match English-language performance.
-            </p>
-
-            <h2 className="docs-h2">Adversarial input</h2>
-            <p className="docs-prose">
-                Like any classifier, AIDetx2 can be targeted by inputs specifically
-                crafted to evade detection (e.g. injecting irregular punctuation or
-                unusual phrasing to shift feature values). It is not designed as a
-                security control against a motivated adversary.
-            </p>
-
-            <h2 className="docs-h2">Model attribution</h2>
-            <p className="docs-prose">
-                Identifying *which* AI model generated a text is inherently harder than
-                the binary human/AI decision, since newer or fine-tuned models can
-                closely resemble the writing patterns of models already in the
-                reference set.
-            </p>
-            </section> */}
-
-             {/* ───────────────── Contributing ───────────────── */}
-
-            <section className="docs-section" id="contributing">
-            <div className="docs-eyebrow">Reference</div>
-
-            <h1 className="docs-title">Contributing</h1>
-
-            <p className="docs-lead">
-                Contributions are welcome. Here's the process for submitting a change.
-            </p>
-
-            <hr className="docs-divider" />
-
-            <ol className="docs-list">
-                <li><strong>Fork</strong> the repository and clone it locally.</li>
-                <li><strong>Create a branch</strong> for your change: <code>git checkout -b fix/short-description</code>.</li>
-                <li><strong>Make your changes</strong>, keeping commits focused and descriptive.</li>
-                <li><strong>Test locally</strong> before opening a PR (both the local and backend versions, if your change touches shared logic).</li>
-                <li><strong>Open a pull request</strong> against <code>main</code>, describing what changed and why.</li>
-            </ol>
-
-            <p className="docs-prose">
-                {/* TODO: add coding style / lint rules, issue template, or license note if applicable */}
-            </p>
-            </section>
-
-
-            {/* ───────────────── GitHub ───────────────── */}
-
-            <section className="docs-section" id="github">
-            <div className="docs-eyebrow">Resources</div>
-
-            <h1 className="docs-title">GitHub</h1>
-
-            <p className="docs-lead">
-                Source code, issues, and contributions.
-            </p>
-
-            <hr className="docs-divider" />
-
-            <div className="docs-github-card">
-                <div className="docs-github-left">
-                <i className="ti ti-brand-github docs-github-icon" />
-
-                <div>
-                    <div className="docs-github-title">
-                    AIDetx2
                     </div>
+                </section>
 
-                    <div className="docs-github-sub">
-                    https://github.com/DiogoSilva1904/AIDetx2-Frontend
+                {/* ───────────────── GitHub ───────────────── */}
+
+                <section className="docs-section" id="github">
+                    <div className="docs-eyebrow">Resources</div>
+
+                    <h2 className="docs-title">GitHub</h2>
+
+                    <p className="docs-lead">
+                        Source code, dataset, and contributions.
+                    </p>
+
+                    <hr className="docs-divider" />
+
+                    <div className="docs-github-card">
+                        <div className="docs-github-left">
+                        <i className="ti ti-brand-github docs-github-icon" />
+
+                        <div>
+                            <div className="docs-github-title">
+                            AIDetx2
+                            </div>
+
+                            <div className="docs-github-sub">
+                                Official GitHub organization · Project repositories
+                            </div>
+                        </div>
+                        </div>
+
+                        <a
+                        href="https://github.com/AIDetx2"
+                        className="docs-github-btn"
+                        target="_blank"
+                        rel="noreferrer"
+                        >
+                        <i className="ti ti-external-link" />
+                        Explore repositories
+                        </a>
                     </div>
-                </div>
-                </div>
-
-                <a
-                href="https://github.com/DiogoSilva1904/AIDetx2-Frontend"
-                className="docs-github-btn"
-                target="_blank"
-                rel="noreferrer"
-                >
-                <i className="ti ti-external-link" />
-                View repo
-                </a>
+                </section>
             </div>
-            </section>
         </main>
         </div>
     )

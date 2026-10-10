@@ -161,7 +161,6 @@ function removePageNumbers(pages: string[]): string[] {
 
 function cleanExtractedText(text: string): string {
     const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-    console.log("Cleaning text...")
 
     // ── Remove title block (first few short lines before main content) ──
     let startIdx = 0;
