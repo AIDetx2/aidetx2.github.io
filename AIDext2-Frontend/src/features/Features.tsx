@@ -123,7 +123,6 @@ export class Features {
             vowels ? vowels.length : 1;
 
 
-        // textstat-style silent e handling
         if (
             word.endsWith("e") &&
             !word.endsWith("le") &&
@@ -133,7 +132,6 @@ export class Features {
         }
 
 
-        // endings that are usually silent
         if (
             word.endsWith("es") &&
             !word.endsWith("ses") &&
@@ -201,7 +199,6 @@ export class Features {
 
         return {
 
-            // same formula as textstat
             flesch_reading_ease:
                 206.835
                 - (1.015 * avgSentenceLength)

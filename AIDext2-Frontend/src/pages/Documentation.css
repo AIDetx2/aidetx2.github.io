@@ -1,24 +1,6 @@
 /* @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css'); */
 
-@media (max-width: 1100px) {
-  .docs-feature-card {
-    flex-basis: calc(33.333% - 0.75rem);
-  }
-}
-
-@media (max-width: 750px) {
-  .docs-feature-card {
-    flex-basis: calc(50% - 0.5rem);
-  }
-}
-
-@media (max-width: 500px) {
-  .docs-feature-card {
-    flex-basis: 100%;
-  }
-}
-
 .docs-shell {
   display: flex;
   font-family: 'DM Mono', monospace;
@@ -593,7 +575,7 @@ html {
 }
 
 .docs-faq-answer.open {
-  max-height: 500px; /* generous cap — taller than any real answer */
+  max-height: 1000px;
 }
 
 .docs-faq-answer-inner {
@@ -691,4 +673,139 @@ html {
   color: var(--text);
   margin: 1.5rem 0 0.5rem;
   letter-spacing: -0.01em;
+}
+
+/* ───────── Responsive ───────── */
+
+.docs-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1100px) {
+  .docs-main {
+    padding: 2.5rem 2rem;
+  }
+  .docs-feature-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  /* reset the manual column placement of the last two cards */
+  .docs-feature-card:nth-last-child(2),
+  .docs-feature-card:last-child {
+    grid-column: auto;
+  }
+}
+
+.docs-mobile-toggle {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .docs-shell {
+    flex-direction: column;
+  }
+
+  /* compact bar under the navbar */
+  .docs-mobile-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 64px;
+    z-index: 60;
+    height: 48px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 1rem;
+    background: var(--bg2);
+    border: none;
+    border-bottom: 0.5px solid var(--border);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  /* sidebar is a dropdown, hidden until opened */
+  .docs-sidebar {
+    display: none;
+  }
+  .docs-sidebar.open {
+    display: block;
+    position: fixed;
+    top: 112px;                      /* navbar 64 + toggle 48 */
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    max-height: calc(100dvh - 112px);
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 0.75rem 0;
+    z-index: 55;
+    border-right: none;
+    border-bottom: 0.5px solid var(--border);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+  }
+  .docs-nav-item {
+    padding: 10px 8px;
+  }
+
+  .docs-section {
+    scroll-margin-top: 130px;
+  }
+
+  /* spacing and type */
+  .docs-main {
+    padding: 1.5rem 1rem 3rem;
+  }
+  .docs-title {
+    font-size: 24px;
+  }
+  .docs-lead {
+    font-size: 14px;
+    margin-bottom: 1.5rem;
+  }
+  .docs-divider {
+    margin: 1.5rem 0;
+  }
+
+  .docs-feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* tables and diagrams scroll sideways instead of shrinking */
+  .docs-table {
+    min-width: 520px;
+  }
+  .docs-diagram svg {
+    min-width: 520px;
+  }
+
+  .docs-limitation-card {
+    padding: 1rem;
+  }
+  .docs-faq-question {
+    padding: 0.875rem 1rem;
+  }
+  .docs-faq-answer-inner {
+    padding: 0.875rem 1rem 1rem;
+  }
+  .docs-github-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .docs-github-btn {
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 12px 14px;
+  }
+}
+
+@media (max-width: 500px) {
+  .docs-feature-grid {
+    grid-template-columns: 1fr;
+  }
 }

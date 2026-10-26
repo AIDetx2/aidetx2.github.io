@@ -5,7 +5,7 @@ interface TextSegment {
   label: "AI" | "Human" | "Hybrid";
   probai: number;
   probhuman: number;
-  probmodel?: number;   // ← add
+  probmodel?: number; 
   gen_model?: string;
   chunkIndex: number;
   totalChunks: number;
@@ -21,7 +21,6 @@ interface Props {
   onRescan: () => void;
 }
 
-// Centralised colour map — single source of truth for all three labels
 const LABEL_COLORS: Record<"AI" | "Human" | "Hybrid", string> = {
   AI:     "#e05c5c",
   Hybrid: "#f0a500",
@@ -47,8 +46,8 @@ interface Props {
   selectedModel: { id: string; category: "ml" | "dl" } | null;
   windowMode: "chars" | "words";
   onRescan: () => void;
-  onSegmentSelect: (seg: TextSegment | null) => void;  // ← add
-  selectedSeg: TextSegment | null;                      // ← add
+  onSegmentSelect: (seg: TextSegment | null) => void;  
+  selectedSeg: TextSegment | null;                    
 }
 
 export default function SegmentTooltip({ segments, selectedModel, windowMode, onRescan, onSegmentSelect, selectedSeg }: Props) {
@@ -105,12 +104,12 @@ export default function SegmentTooltip({ segments, selectedModel, windowMode, on
             {
             label: "Model",
             value: seg.gen_model,
-            color: MODEL_COLORS[seg.gen_model] ?? "#f0a500",  // ← per-model color
+            color: MODEL_COLORS[seg.gen_model] ?? "#f0a500",  
           },
           ...(seg.probmodel !== undefined ? [{
             label: "Model confidence",
             value: `${(seg.probmodel * 100).toFixed(1)}%`,
-            color: MODEL_COLORS[seg.gen_model] ?? "#f0a500",  // ← same color
+            color: MODEL_COLORS[seg.gen_model] ?? "#f0a500",  
           }] : []),
         ] : []),
 
@@ -142,11 +141,9 @@ export default function SegmentTooltip({ segments, selectedModel, windowMode, on
       {segments.map((s, i) => (
         <span
           key={i}
-          // CSS classes: highlight-ai | highlight-human | highlight-hybrid
-          // Add .highlight-hybrid to your TextClassifierBox.css (see below)
           className={
             isModelOnly && s.gen_model
-              ? undefined  // no class, use inline style instead
+              ? undefined 
               : s.label === "AI"     ? "highlight-ai"
               : s.label === "Hybrid" ? "highlight-hybrid"
               : "highlight-human"

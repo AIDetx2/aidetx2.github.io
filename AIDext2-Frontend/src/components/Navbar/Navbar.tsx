@@ -13,9 +13,36 @@ const NAV_LINKS = [
   { label: "Models", to: "/models" },
 ];
 
+function ModeSwitch() {
+  const { useLocal, setUseLocal } = useMode();
+  return (
+    <div className="navbar-mode-switch">
+      <span className={`mode-label ${useLocal ? "active" : ""}`}>
+        <GrPersonalComputer />
+        <span>Local</span>
+      </span>
+
+      <label className="switch">
+        <input
+          type="checkbox"
+          checked={!useLocal}
+          onChange={() => setUseLocal(u => !u)}
+          aria-label="Toggle between local and backend mode"
+        />
+        <span className="slider"></span>
+      </label>
+
+      <span className={`mode-label ${!useLocal ? "active" : ""}`}>
+        <AiOutlineCloudServer />
+        <span>Backend</span>
+      </span>
+    </div>
+  );
+}
+
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { useLocal, setUseLocal } = useMode();
+  //const { useLocal, setUseLocal } = useMode();
   const location = useLocation();
 
   const isActive = (to: string) =>
@@ -25,62 +52,49 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <div className="navbar-inner">
-
-        <Link to="/" className="navbar-logo">
+        <Link to="/" className="navbar-logo" onClick={() => setMenuOpen(false)}>
           AIDetx<span className="navbar-logo-accent">2</span>
         </Link>
 
+        {/* Desktop links */}
         <div className="navbar-links">
-          {/* Desktop links */}
           {NAV_LINKS.map((link) => (
             <Link key={link.label} to={link.to} className={`navbar-link ${isActive(link.to) ? "active" : ""}`}>
               {link.label}
             </Link>
           ))}
-
-          {/* Mobile hamburger */}
-          <button
-            className="navbar-hamburger"
-            onClick={() => setMenuOpen((o) => !o)}
-            aria-label="Toggle menu"
-          >
-            <span className={`ham-line ${menuOpen ? "ham-line--open-1" : ""}`} />
-            <span className={`ham-line ${menuOpen ? "ham-line--open-2" : ""}`} />
-            <span className={`ham-line ${menuOpen ? "ham-line--open-3" : ""}`} />
-          </button>
         </div>
 
-         <div className="navbar-mode-switch">
-              <span className={`mode-label ${useLocal ? "active" : ""}`}>
-                <GrPersonalComputer />
-                <span>Local</span>
-              </span>
+        {/* Desktop switch */}
+        <ModeSwitch />
 
-            <label className="switch">
-                <input
-                    type="checkbox"
-                    checked={!useLocal}
-                    onChange={() => setUseLocal(u => !u)}
-                />
-                <span className="slider"></span>
-            </label>
-
-          <span className={`mode-label ${!useLocal ? "active" : ""}`}>
-            <AiOutlineCloudServer />
-            <span>Backend</span>
-          </span>
-        </div>
-
+        {/* Hamburger: now a direct child of navbar-inner */}
+        <button
+          className="navbar-hamburger"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label="Toggle menu"
+          aria-expanded={menuOpen}
+        >
+          <span className={`ham-line ${menuOpen ? "ham-line--open-1" : ""}`} />
+          <span className={`ham-line ${menuOpen ? "ham-line--open-2" : ""}`} />
+          <span className={`ham-line ${menuOpen ? "ham-line--open-3" : ""}`} />
+        </button>
       </div>
 
       {/* Mobile menu */}
       {menuOpen && (
         <div className="navbar-mobile-menu">
           {NAV_LINKS.map((link) => (
-            <Link key={link.label} to={link.to} className={`navbar-link ${isActive(link.to) ? "active" : ""}`}>
+            <Link
+              key={link.label}
+              to={link.to}
+              className={`navbar-link ${isActive(link.to) ? "active" : ""}`}
+              onClick={() => setMenuOpen(false)}
+            >
               {link.label}
             </Link>
           ))}
+          <ModeSwitch />
         </div>
       )}
     </nav>

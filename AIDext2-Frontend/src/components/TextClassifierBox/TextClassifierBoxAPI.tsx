@@ -20,7 +20,7 @@ export interface ChunkResult {
   start: number;
   end: number;
   probai: number;
-  probhuman:number;         // probability of AI (0–1)
+  probhuman:number;      
   //label: "AI" | "Human" | "Hybrid";
   label:number;
   features: Record<string, number>;
@@ -68,46 +68,6 @@ const MODEL_COLORS: Record<string, string> = {
 function getModelColor(model: string): string {
   return MODEL_COLORS[model] ?? "#888";
 }
-
-
-
-// ── Re-label chunks using score thresholds instead of trusting backend label ─
-// This lets the frontend decide the hybrid zone independently of the backend.
-/* function applyHybridLabel(results: ChunkResult[]): ChunkResult[] {
-  return results.map(r => ({
-    ...r,
-    label: r.score > HYBRID_HIGH ? "AI"
-         : r.score < HYBRID_LOW  ? "Human"
-         : "Hybrid",
-  }));
-} */
-
-/* function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
-  if (!results.length) return [];
-
-  return results
-    .map((chunk, i) => {
-      const start = chunk.start;
-      // Use next chunk's start as this chunk's end — guarantees no overlap, no gap
-      const end   = Math.min(results[i + 1]?.start ?? text.length, text.length);
-
-      if (start >= text.length) return null;
-      const slice = text.slice(start, end);
-      if (!slice.length) return null;
-
-      return {
-        text:        slice,
-        label:       chunk.label,
-        score:       chunk.score,
-        gen_model:   chunk.gen_model,
-        start,
-        end,
-        chunkIndex:  i + 1,
-        totalChunks: results.length,
-      };
-    })
-    .filter(Boolean) as TextSegment[];
-} */
 
 function isBoundary(char: string): boolean {
     return /\s/.test(char) || /[.,!?;:()[\]{}"'`]/.test(char);
@@ -159,8 +119,6 @@ function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
                     ? "Human"
                     : "Hybrid";
 
-        // ----- Compute display boundaries -----
-
         const displayStart =
             i === 0
                 ? chunk.start
@@ -173,10 +131,8 @@ function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
         } else {
             const next = results[i + 1];
 
-            // midpoint of the overlap
             const midpoint = Math.floor((chunk.end + next.start) / 2);
 
-            // move to nearest word boundary
             displayEnd = snapToWordBoundary(text, midpoint);
         }
 
@@ -204,71 +160,6 @@ function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
     return segments;
 }
 
-/* function deriveOverall(results: ChunkResult[]): { label: "AI" | "Human" | "Hybrid"; confidence: number } {
-  const aiCount     = results.filter(r => r.label === "AI").length;
-  const humanCount  = results.filter(r => r.label === "Human").length;
-  const hybridCount = results.filter(r => r.label === "Hybrid").length;
-
-  const avgScore = results.reduce((sum, r) => sum + r.score, 0) / results.length;
-
-  // If more than 20% of chunks are in the hybrid zone → overall is Hybrid
-  const hybridRatio = hybridCount / results.length;
-  if (hybridRatio >= 0.2) return { label: "Hybrid", confidence: avgScore };
-
-  const label = aiCount >= humanCount ? "AI" : "Human";
-  return { label, confidence: avgScore };
-} */
-
-/* 
-function deriveOverall(results: ChunkResult[]): OverallResult {
-  const aiConfidence =
-    results.reduce((sum, r) => sum + r.probai, 0) / results.length;
-
-  const humanConfidence =
-    results.reduce((sum, r) => sum + r.probhuman, 0) / results.length;
-
-  const modelConfidence =
-    results.some(r => r.probmodel !== undefined)
-      ? results.reduce((sum, r) => sum + (r.probmodel ?? 0), 0) / results.length
-      : undefined;
-
-  const labelledChunks = results.map(r => ({
-    label:
-      r.probai > HYBRID_HIGH
-        ? "AI"
-        : r.probhuman > HYBRID_HIGH
-          ? "Human"
-          : "Hybrid",
-  }));
-
-  const hybridRatio =
-    labelledChunks.filter(r => r.label === "Hybrid").length / results.length;
-
-  let label: "AI" | "Human" | "Hybrid";
-
-  // Strong overall evidence
-  if (aiConfidence >= 0.65) {
-    label = "AI";
-  } else if (humanConfidence >= 0.65) {
-    label = "Human";
-  }
-  // Only call it Hybrid if neither side is confident enough
-  else if (hybridRatio >= 0.4) {
-    label = "Hybrid";
-  }
-  // Fallback
-  else {
-    label = aiConfidence >= humanConfidence ? "AI" : "Human";
-  }
-
-  return {
-    label,
-    aiConfidence,
-    humanConfidence,
-    modelConfidence,
-  };
-} */
-
 function deriveOverall(
   results: ChunkResult[],
   mode: "binary" | "model" | "binary/model" = "binary"
@@ -295,9 +186,7 @@ function deriveOverall(
   const aiRatio = aiCount / total;
   const humanRatio = humanCount / total;
 
-  // Mixed authorship: meaningful presence of BOTH confidently-AI and
-  // confidently-Human chunks — i.e. distinct parts of the doc disagree.
-  const MIN_MIX_RATIO = 0.3; // tune: min share each side needs to "count"
+  const MIN_MIX_RATIO = 0.3;
 
   let label: "AI" | "Human" | "Hybrid";
 
@@ -362,7 +251,6 @@ export default function TextScannerAPI() {
   //const canScan = wordCount >= MIN_WORDS && selectedModel !== null;
   const canScan = selectedModel !== null && wordCount > 0;
 
-  // Apply hybrid re-labelling before parsing segments
   const labelledResults = scanResponse?.results ?? [];
 
   const segments = scanResponse && text.length > 0
@@ -375,10 +263,8 @@ export default function TextScannerAPI() {
   let gaugeConfidence = 0;
 
   if (selectedModel?.id === "model") {
-    // Pure model identification
     gaugeConfidence = overall?.modelConfidence ?? 0;
   } else {
-    // Binary or Binary+Model
     switch (overall?.label) {
       case "AI":
         gaugeConfidence = overall?.aiConfidence ?? 0;
@@ -389,7 +275,6 @@ export default function TextScannerAPI() {
         break;
 
       case "Hybrid":
-        // Only happens when neither class is confident enough
         gaugeConfidence = Math.max(
           overall?.aiConfidence ?? 0,
           overall?.humanConfidence ?? 0
@@ -445,14 +330,6 @@ export default function TextScannerAPI() {
     setText(e.target.value.slice(0, MAX_CHARS));
   }
 
-  /* function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setText(((ev.target?.result as string) ?? "").slice(0, MAX_CHARS));
-    reader.readAsText(file);
-  } */
-
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -483,16 +360,6 @@ export default function TextScannerAPI() {
       setIsDragging(false);
     }
   }
-
-  /* function handleDrop(e: DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setText(((ev.target?.result as string) ?? "").slice(0, MAX_CHARS));
-    reader.readAsText(file);
-  } */
 
   async function handleDrop(e: DragEvent<HTMLDivElement>) {
       e.preventDefault();
@@ -682,25 +549,6 @@ async function handleScan() {
                   : "Human-written"}
                 </div>
               </div>
-
-              {/* {(selectedModel?.id === "binary/model" || selectedModel?.id === "model") && (() => {
-                const genModel = deriveGenModel(labelledResults);
-                
-                return genModel ? (
-                  <div className="metric-row">
-                    <div className="metric-label-row">
-                        <span className="metric-label">Generated by:</span>
-                        <InfoTooltip
-                                text="The confidence represents (complete this later)?MISSING MISSING MISSING MISSING MISSING"
-                        />
-                    </div>
-                    <div className="label-badge badge-ai">
-                      <span className="label-dot dot-ai" />
-                      {genModel}
-                    </div>
-                  </div>
-                ) : null;
-              })()} */}
 
               {(selectedModel?.id === "binary/model" || selectedModel?.id === "model") && (() => {
                 const genModel = deriveGenModel(labelledResults);

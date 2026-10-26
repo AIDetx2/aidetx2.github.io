@@ -67,39 +67,6 @@ function getModelColor(model: string): string {
   return MODEL_COLORS[model] ?? "#888";
 }
 
-// ── Re-label chunks using score thresholds instead of trusting backend label ─
-// This lets the frontend decide the hybrid zone independently of the backend.
-/* function applyHybridLabel(results: ChunkResult[]): ChunkResult[] {
-  return results; // labels come from model; hybrid is derived in parseSegments
-}
- */
-/* function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
-  if (!results.length) return [];
-
-  return results
-    .map((chunk, i) => {
-      const start = chunk.start;
-      // Use next chunk's start as this chunk's end — guarantees no overlap, no gap
-      const end   = Math.min(results[i + 1]?.start ?? text.length, text.length);
-
-      if (start >= text.length) return null;
-      const slice = text.slice(start, end);
-      if (!slice.length) return null;
-
-      return {
-        text:        slice,
-        label:       chunk.label,
-        score:       chunk.score,
-        gen_model:   chunk.gen_model,
-        start,
-        end,
-        chunkIndex:  i + 1,
-        totalChunks: results.length,
-      };
-    })
-    .filter(Boolean) as TextSegment[];
-} */
-
 function isBoundary(char: string): boolean {
     return /\s/.test(char) || /[.,!?;:()[\]{}"'`]/.test(char);
 }
@@ -150,7 +117,6 @@ function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
                     ? "Human"
                     : "Hybrid";
 
-        // ----- Compute display boundaries -----
 
         const displayStart =
             i === 0
@@ -164,10 +130,8 @@ function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
         } else {
             const next = results[i + 1];
 
-            // midpoint of the overlap
             const midpoint = Math.floor((chunk.end + next.start) / 2);
 
-            // move to nearest word boundary
             displayEnd = snapToWordBoundary(text, midpoint);
         }
 
@@ -195,115 +159,6 @@ function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
     return segments;
 }
 
-/* function parseSegments(text: string, results: ChunkResult[]): TextSegment[] {
-  if (!results.length) return [];
-
-  return results.map((chunk, i) => {
-    const start = chunk.start;
-    const end   = Math.min(chunk.end, text.length);
-
-    const label: "AI" | "Human" | "Hybrid" =
-      chunk.probai    > HYBRID_HIGH ? "AI"    :
-      chunk.probhuman > HYBRID_HIGH ? "Human" :
-      "Hybrid";
-
-    return {
-      text:        text.slice(start, end),
-      label,
-      probai:      chunk.probai,
-      probhuman:   chunk.probhuman,
-      probmodel:   chunk.probmodel,
-      features:    chunk.features,
-      gen_model:   chunk.gen_model,
-      start,
-      end,
-      chunkIndex:  i + 1,
-      totalChunks: results.length,
-    };
-  }).filter(s => s.text.trim().length > 0);
-} */
-
-/* function deriveOverall(results: ChunkResult[]): { label: "AI" | "Human" | "Hybrid"; confidence: number } {
-  const avgProbAI    = results.reduce((sum, r) => sum + r.probai,    0) / results.length;
-  const avgProbHuman = results.reduce((sum, r) => sum + r.probhuman, 0) / results.length;
-
-  const labelledChunks = results.map(r => ({
-    label: r.probai    > HYBRID_HIGH ? "AI"    :
-           r.probhuman > HYBRID_HIGH ? "Human" :
-           "Hybrid"
-  }));
-
-  const hybridRatio = labelledChunks.filter(r => r.label === "Hybrid").length / results.length;
-  if (hybridRatio >= 0.2) return { label: "Hybrid", confidence: avgProbAI };
-
-  const aiCount    = labelledChunks.filter(r => r.label === "AI").length;
-  const humanCount = labelledChunks.filter(r => r.label === "Human").length;
-
-  return {
-    label:      aiCount >= humanCount ? "AI" : "Human",
-    confidence: aiCount >= humanCount ? avgProbAI : avgProbHuman,
-  };
-} */
-
-/* function deriveOverall(results: ChunkResult[],mode: "binary" | "model" | "binary/model" = "binary"): OverallResult {
-  const aiConfidence =
-    results.reduce((sum, r) => sum + r.probai, 0) / results.length;
-
-  const humanConfidence =
-    results.reduce((sum, r) => sum + r.probhuman, 0) / results.length;
-
-  const modelConfidence =
-    results.some(r => r.probmodel !== undefined)
-      ? results.reduce((sum, r) => sum + (r.probmodel ?? 0), 0) / results.length
-      : undefined;
-
-  if (mode === "model") {
-    return {
-      label: "AI",
-      aiConfidence,
-      humanConfidence,
-      modelConfidence,
-    };
-  }
-
-  const labelledChunks = results.map(r => ({
-    label:
-      r.probai > HYBRID_HIGH
-        ? "AI"
-        : r.probhuman > HYBRID_HIGH
-          ? "Human"
-          : "Hybrid",
-  }));
-
-  const hybridRatio =
-    labelledChunks.filter(r => r.label === "Hybrid").length / results.length;
-
-
-  let label: "AI" | "Human" | "Hybrid";
-
-  // Strong overall evidence
-  if (aiConfidence >= 0.65) {
-    label = "AI";
-  } else if (humanConfidence >= 0.65) {
-    label = "Human";
-  }
-  // Only call it Hybrid if neither side is confident enough
-  else if (hybridRatio >= 0.4) {
-    label = "Hybrid";
-  }
-  // Fallback
-  else {
-    label = aiConfidence >= humanConfidence ? "AI" : "Human";
-  }
-
-  return {
-    label,
-    aiConfidence,
-    humanConfidence,
-    modelConfidence,
-  };
-} */
-
 function deriveOverall(
   results: ChunkResult[],
   mode: "binary" | "model" | "binary/model" = "binary"
@@ -330,9 +185,7 @@ function deriveOverall(
   const aiRatio = aiCount / total;
   const humanRatio = humanCount / total;
 
-  // Mixed authorship: meaningful presence of BOTH confidently-AI and
-  // confidently-Human chunks — i.e. distinct parts of the doc disagree.
-  const MIN_MIX_RATIO = 0.3; // tune: min share each side needs to "count"
+  const MIN_MIX_RATIO = 0.3;
 
   let label: "AI" | "Human" | "Hybrid";
 
@@ -414,10 +267,8 @@ export default function TextScanner() {
   let gaugeConfidence = 0;
 
   if (selectedModel?.id === "model") {
-    // Pure model identification
     gaugeConfidence = overall?.modelConfidence ?? 0;
   } else {
-    // Binary or Binary+Model
     switch (overall?.label) {
       case "AI":
         gaugeConfidence = overall?.aiConfidence ?? 0;
@@ -428,7 +279,6 @@ export default function TextScanner() {
         break;
 
       case "Hybrid":
-        // Only happens when neither class is confident enough
         gaugeConfidence = Math.max(
           overall?.aiConfidence ?? 0,
           overall?.humanConfidence ?? 0
@@ -451,7 +301,6 @@ export default function TextScanner() {
       if (!localScannerRef.current) {
           localScannerRef.current = new LocalScanner();
       }
-      // Eagerly initialize on mount, don't wait for user to click scan
       localScannerRef.current.load().then(() => {
           setScannerReady(true);
           //console.log("Scanner ready");
@@ -496,13 +345,6 @@ export default function TextScanner() {
     setText(e.target.value.slice(0, MAX_CHARS));
   }
 
-  /* function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setText(((ev.target?.result as string) ?? "").slice(0, MAX_CHARS));
-    reader.readAsText(file);
-  } */
   async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
       const file = e.target.files?.[0];
       if (!file) return;
@@ -517,11 +359,11 @@ export default function TextScanner() {
 
   function normalizeText(text: string): string {
       return text
-          .replace(/\r\n/g, "\n")  // Windows line endings
-          .replace(/\r/g, "\n")    // Old Mac line endings
-          .replace(/\u00A0/g, " ") // Non-breaking spaces
-          .replace(/\u2028/g, "\n") // Line separator
-          .replace(/\u2029/g, "\n"); // Paragraph separator
+          .replace(/\r\n/g, "\n")  
+          .replace(/\r/g, "\n")    
+          .replace(/\u00A0/g, " ") 
+          .replace(/\u2028/g, "\n") 
+          .replace(/\u2029/g, "\n");
   }
 
   function handleDragOver(e: DragEvent<HTMLDivElement>) {
@@ -535,15 +377,6 @@ export default function TextScanner() {
     }
   }
 
-  /* function handleDrop(e: DragEvent<HTMLDivElement>) {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => setText(((ev.target?.result as string) ?? "").slice(0, MAX_CHARS));
-    reader.readAsText(file);
-  } */
 
   async function handleDrop(e: DragEvent<HTMLDivElement>) {
       e.preventDefault();

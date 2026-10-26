@@ -13,8 +13,9 @@
   border: 0.5px solid #e0e0e0;
   border-radius: 16px;
   padding: 24px 28px;
+  box-sizing: border-box;
   width: min(920px, 92vw);
-  max-height: 88vh;
+  max-height: 88dvh;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -30,6 +31,7 @@
 .chunk-modal-header-left {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -124,6 +126,7 @@
   padding: 7px 14px;
   border-bottom: 0.5px solid #f0f0f0;
   font-size: 13px;
+  gap: 12px;
 }
 
 .chunk-modal-row:last-child {
@@ -137,6 +140,8 @@
 .chunk-modal-row-value {
   font-weight: 500;
   color: #111;
+  text-align: right;
+  word-break: break-word;
 }
 
 .chunk-modal-preview {
@@ -201,6 +206,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  max-width: 100%;
 }
 
 .gauge-block-title {
@@ -208,4 +214,51 @@
   color: #888;
   text-align: center;
   margin-top: -8px;
+}
+
+@media (max-width: 680px) {
+  .chunk-modal-overlay {
+    padding: 12px;
+    box-sizing: border-box;
+  }
+
+  .chunk-modal-box {
+    width: 100%;
+    padding: 16px;
+    gap: 16px;
+    border-radius: 14px;
+  }
+
+  .chunk-modal-title {
+    font-size: 15px;
+  }
+
+  /* stack the stats and the gauges */
+  .chunk-modal-body {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .chunk-modal-right {
+    flex: 0 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    gap: 16px;
+    padding: 14px 8px;
+  }
+
+  .chunk-modal-features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* bigger tap targets */
+  .chunk-modal-close {
+    font-size: 24px;
+    padding: 4px 8px;
+  }
+
+  .chunk-modal-tab {
+    padding: 6px 14px;
+  }
 }

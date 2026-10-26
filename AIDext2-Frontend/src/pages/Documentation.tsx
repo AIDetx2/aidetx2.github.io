@@ -238,14 +238,14 @@ export default function Documentation() {
     const [activeId, setActiveId] = useState('overview')
     const [openFaq, setOpenFaq] = useState<number | null>(null)
     const location = useLocation()
+    const [navOpen, setNavOpen] = useState(false)
+    const currentLabel =
+        navGroups.flatMap((g) => g.items).find((i) => i.id === activeId)?.label ?? 'Sections'
 
     useEffect(() => {
-        // 1. Define the observer to watch section visibility
         const observer = new IntersectionObserver(
         (entries) => {
             entries.forEach((entry) => {
-            // If a section is in view (intersecting), set it as active
-            // threshold: 0.5 means when 50% of the section is visible
             if (entry.isIntersecting) {
                 setActiveId(entry.target.id)
             }
@@ -254,7 +254,6 @@ export default function Documentation() {
         {rootMargin: '-20% 0% -35% 0%', threshold: 0.05 }
         )
 
-        // 2. Observe all sections that have an ID
         const sections = document.querySelectorAll('.docs-section')
         sections.forEach((section) => observer.observe(section))
 
@@ -263,12 +262,10 @@ export default function Documentation() {
         }
     }, [])
 
-    // 2. Scroll to the hash target whenever it changes (including on first load)
     useEffect(() => {
         if (!location.hash) return
 
-        const id = location.hash.slice(1) // strip the leading "#"
-        // small delay lets the DOM finish rendering before we try to scroll
+        const id = location.hash.slice(1) 
         const timeout = setTimeout(() => {
             const el = document.getElementById(id)
             if (el) {
@@ -281,7 +278,15 @@ export default function Documentation() {
     }, [location.hash])
     return (
         <div className="docs-shell">
-        <aside className="docs-sidebar">
+            <button
+                className="docs-mobile-toggle"
+                onClick={() => setNavOpen((o) => !o)}
+                aria-expanded={navOpen}
+            >
+                <span>{currentLabel}</span>
+                <i className={`ti ti-chevron-down docs-faq-chevron ${navOpen ? 'open' : ''}`} />
+            </button>
+            <aside className={`docs-sidebar ${navOpen ? 'open' : ''}`}>
             {navGroups.map((group) => (
             <div className="docs-nav-group" key={group.label}>
                 <div className="docs-nav-group-label">{group.label}</div>
@@ -291,6 +296,7 @@ export default function Documentation() {
                     key={item.id}
                     href={`#${item.id}`}
                     className={`docs-nav-item ${activeId === item.id ? 'active' : ''}`}
+                    onClick={() => setNavOpen(false)}
                 >
                     <i className={`ti ${item.icon}`} aria-hidden="true" />
                     {item.label}

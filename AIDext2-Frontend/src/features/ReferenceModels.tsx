@@ -26,5 +26,5 @@ export type Mode = "binary" | "multiclass";
 
 export const REFERENCES: Record<Mode, Record<string, Uint8Array>> = {
     binary:     { human_bytes: HUMAN_BYTES, ai_bytes: AI_BYTES },
-    multiclass: { ai_bytes: AI_BYTES_MULTICLASS },   // add human_bytes here only if the multiclass training used it
+    multiclass: { ai_bytes: AI_BYTES_MULTICLASS },
 };

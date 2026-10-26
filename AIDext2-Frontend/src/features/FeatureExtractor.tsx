@@ -32,7 +32,6 @@ export class FeatureExtractor {
             .match(
                 /[\p{L}\p{N}]+(?:['’][\p{L}\p{N}]+)?|[^\s\p{L}\p{N}]/gu
             ) ?? [];
-        // In FeatureExtractor.extract(), right after building words:
         //console.log("token count", words.length);
         //console.log("tokens", words);
 

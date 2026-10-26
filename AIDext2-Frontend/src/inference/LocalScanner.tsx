@@ -59,7 +59,7 @@ export interface ChunkResult {
   start: number;
   end: number;
   probai: number;
-  probhuman:number;         // probability of AI (0–1)
+  probhuman:number; 
   //label: "AI" | "Human" | "Hybrid";
   label:number;
   features: Record<string, number>;
@@ -78,23 +78,21 @@ interface ScanOptions {
   windowMode: "chars" | "words";
 }
 
-// ── Dynamic window configuration ───────────────────────────────────────────
-
 function getWindowConfigWords(text: string): { window: number; stride: number } | null {
   const wordCount = text.split(/\s+/).filter(Boolean).length;
-  if (wordCount < 50)   return null;                              // truly too short
-  if (wordCount < 200)  return { window: wordCount, stride: wordCount }; // single chunk
-  if (wordCount < 1000) return { window: 250, stride: 50 };
-  if (wordCount < 3000) return { window: 300, stride: 75 };
-  return { window: 200, stride: 100 };
+  if (wordCount < 50)   return null;                             
+  if (wordCount < 200)  return { window: wordCount, stride: wordCount };
+  if (wordCount < 1000) return { window: 400, stride: 200 };
+  if (wordCount < 3000) return { window: 500, stride: 250 };
+  return { window: 500, stride: 250 };
 }
 
 function getWindowConfigChars(text: string): { window: number; stride: number } | null {
   const charCount = text.length;
-  if (charCount < 1000)  return null;
-  if (charCount < 5000)  return { window: 500,  stride: 250 };
-  if (charCount < 15000) return { window: 750,  stride: 375 };
-  return { window: 1000, stride: 500 };
+  if (charCount < 300)  return null;
+  if (charCount < 1200)  return { window: charCount,  stride: charCount };
+  if (charCount < 6000) return { window: 2400,  stride: 1200 };
+  return { window: 3000, stride: 1500 };
 }
 
 export class LocalScanner {
@@ -137,7 +135,7 @@ export class LocalScanner {
 
       this.loadPromise = (async () => {
           //console.log("Initializing zstd...");
-          await Features.init();  // ← initialize where compress is imported
+          await Features.init();
           //console.log("zstd ready");
 
           //console.log("Loading ONNX model...");
@@ -178,7 +176,6 @@ export class LocalScanner {
     
     console.log("Configuration",config)
 
-    // Text is too short to produce meaningful chunks
     const isShortText = config === null;
 
     const windowSize = isShortText
@@ -211,7 +208,6 @@ export class LocalScanner {
 
       console.log(label)
 
-      // rawLabel: 0 = Human, 1 = AI
       console.log("prob", probHuman)
       console.log("pro",probAI)
       const probai = probAI
@@ -312,7 +308,6 @@ export class LocalScanner {
   }
 
 }
-// ── Helpers ────────────────────────────────────────────────────────────────
 
 /* function toVector(featureMap: Record<string, number>): number[] {
   return FEATURE_ORDER.map(key => featureMap[key] ?? 0);
@@ -344,7 +339,6 @@ function splitByWords(
   windowSize: number,
   stride: number
 ): { start: number; end: number }[] {
-  // Build a list of word byte-offsets so we can slice the original string
   const wordOffsets: { start: number; end: number }[] = [];
   const re = /\S+/g;
   let m: RegExpExecArray | null;
@@ -353,7 +347,6 @@ function splitByWords(
     wordOffsets.push({ start: m.index, end: m.index + m[0].length });
   }
 
-  // Not enough words to fill even one window
   if (wordOffsets.length < windowSize) return [];
 
   const chunks: { start: number; end: number }[] = [];

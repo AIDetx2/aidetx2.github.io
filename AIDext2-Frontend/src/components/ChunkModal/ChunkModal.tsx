@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import "./ChunkModal.css";
 import type { TextSegment } from "../TextClassifierBox/TextClassifierBox";
 import ConfidenceGauge from "../ConfidenceGauge/ConfidenceGauge";
@@ -190,6 +190,18 @@ function Row({ label, value, color }: { label: string; value: string; color?: st
   );
 }
 
+function useIsNarrow(breakpoint = 680) {
+  const [narrow, setNarrow] = useState(
+    typeof window !== "undefined" && window.innerWidth <= breakpoint
+  );
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth <= breakpoint);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [breakpoint]);
+  return narrow;
+}
+
 function BinaryPieBlock({
   aiConfidence,
   humanConfidence,
@@ -197,6 +209,8 @@ function BinaryPieBlock({
   aiConfidence: number;
   humanConfidence: number;
 }) {
+  const narrow = useIsNarrow();
+  const scale = narrow ? 0.8 : 1;
   return (
     <div className="gauge-block">
       <PieChart
@@ -216,16 +230,16 @@ function BinaryPieBlock({
                 color: "#4CAF50",
               },
             ],
-            innerRadius: 60,
-            outerRadius: 90,
+            innerRadius: 60 * scale,
+            outerRadius: 90 * scale,
             startAngle: -90,
             endAngle: 90,
-            cx: 180,
-            cy: 110,
+            cx: 180 * scale,
+            cy: 110 * scale,
           },
         ]}
-        width={300}
-        height={140}
+        width={300 * scale}
+        height={140 * scale}
         sx={{
           "& .MuiChartsLegend-root": {
             transform: "translate(-5px) translateY(10px)",

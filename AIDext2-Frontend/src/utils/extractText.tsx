@@ -1,8 +1,7 @@
 import mammoth from "mammoth";
 import * as pdfjsLib from "pdfjs-dist";
 
-// Required for pdf.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = "/AIDetx2-Frontend/pdf.worker.min.mjs";
+pdfjsLib.GlobalWorkerOptions.workerSrc = "pdf.worker.min.mjs";
 
 interface TextItem {
     x: number;
@@ -54,13 +53,11 @@ const END_HEADERS = [
         line.words.push(item);
     }
 
-    // Top → Bottom
     lines.sort((a, b) => b.y - a.y);
 
     return lines
         .map(line => {
 
-            // Left → Right
             line.words.sort((a, b) => a.x - b.x);
 
             return line.words
@@ -162,16 +159,14 @@ function removePageNumbers(pages: string[]): string[] {
 function cleanExtractedText(text: string): string {
     const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
 
-    // ── Remove title block (first few short lines before main content) ──
     let startIdx = 0;
     /* for (let i = 0; i < Math.min(10, lines.length); i++) {
         const line = lines[i];
         const wordCount = line.split(/\s+/).length;
-        // Skip short lines (title, authors, institution, date, abstract header)
         if (wordCount <= 6 || /^(abstract|keywords?|doi|arxiv|university|department|email|@)/i.test(line)) {
             startIdx = i;
         } else {
-            break; // first "real" paragraph found
+            break;
         }
     } */
     for (let i = 0; i < lines.length; i++) {
@@ -181,7 +176,6 @@ function cleanExtractedText(text: string): string {
         }
     }
 
-    // Fallback if no section header exists
     if (startIdx === 0) {
         while (
             startIdx < Math.min(15, lines.length)
@@ -200,7 +194,6 @@ function cleanExtractedText(text: string): string {
         }
     }
 
-    // ── Remove references section at the end ──
     /* let endIdx = lines.length;
     for (let i = lines.length - 1; i >= 0; i--) {
         const line = lines[i];
@@ -208,9 +201,7 @@ function cleanExtractedText(text: string): string {
             endIdx = i;
             break;
         }
-        // Also detect numbered reference patterns like [1] Author...
         if (i < lines.length - 5 && /^\[\d+\]/.test(line)) {
-            // Check if many surrounding lines also look like references
             const refCount = lines.slice(Math.max(0, i - 5), i + 5)
                 .filter(l => /^\[\d+\]/.test(l)).length;
             if (refCount >= 3) {
@@ -232,13 +223,10 @@ function cleanExtractedText(text: string): string {
 
     let cleaned = lines.slice(startIdx, endIdx).join("\n");
 
-    // Fix hyphenated words
     cleaned = cleaned.replace(/(\w)-\n(\w)/g, "$1$2");
 
-    // Merge wrapped lines (keep paragraph breaks)
     cleaned = cleaned.replace(/(?<!\n)\n(?!\n)/g, " ");
 
-    // Remove duplicate spaces
     cleaned = cleaned.replace(/[ \t]+/g, " ");
 
     return cleaned.trim();
@@ -275,7 +263,6 @@ export async function extractTextFromFile(file: File): Promise<string> {
             const midX = viewport.width / 2;
             const content = await page.getTextContent();
 
-            // Separate items into left and right columns
             /* const leftItems:  { y: number; text: string }[] = [];
             const rightItems: { y: number; text: string }[] = [];
 
@@ -291,7 +278,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
             for (const item of content.items as any[]) {
 
                 const x = item.transform[4];
-                const y = item.transform[5];   // <-- don't round anymore
+                const y = item.transform[5]; 
 
                 const target = x < midX ? leftItems : rightItems;
 
@@ -302,7 +289,6 @@ export async function extractTextFromFile(file: File): Promise<string> {
                 });
             }
 
-            // Group each column by Y, sort top-to-bottom
             const buildColumn = (items: { y: number; text: string }[]) => {
                 const lineMap = new Map<number, string[]>();
                 for (const { y, text } of items) {
@@ -319,7 +305,6 @@ export async function extractTextFromFile(file: File): Promise<string> {
             const leftText  = buildColumn(leftItems);
             const rightText = buildColumn(rightItems);
 
-            // Only use right column if it has substantial content
             const pageText = rightText.trim().length > 50
                 ? leftText + "\n" + rightText
                 : leftText;

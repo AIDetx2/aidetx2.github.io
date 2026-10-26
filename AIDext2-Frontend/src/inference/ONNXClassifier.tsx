@@ -27,7 +27,6 @@ export class ONNXClassifier {
 
         console.log(this.session);
         
-        // DEBUG — remove after fixing
         console.log("Input names:",  this.session.inputNames);
         console.log("Output names:", this.session.outputNames);
     } */
@@ -42,7 +41,6 @@ export class ONNXClassifier {
    /*  async predict(features: number[]) {
         if (!this.session) throw new Error("Model not loaded");
 
-        // Check if features are all zeros
         console.log("Feature length:", features.length);
         console.log("Non-zero features:", features.filter(f => f !== 0).length);
         console.log("Features:", features);
@@ -58,7 +56,7 @@ export class ONNXClassifier {
         const label = Number(output["label"].data[0]);
         const probability = output["probabilities"].data[1];
 
-        console.log("fsuishguigrhgiurebnguijrnahbokinaeb11",probability)
+        console.log("probability",probability)
 
         console.log("Label:", label, "Probability:", probability);
         //console.log("All probabilities:", Array.from(output["probabilities"].data));

@@ -56,7 +56,7 @@ In Local Inference mode, the complete detection pipeline runs within the user's 
 
 The models are executed locally using WebAssembly, meaning that the text does not need to be sent to the backend for prediction.
 
-![Local Inference Architecture](media/aidext_arch_local.png)
+![Local Inference Architecture](media/arq_website_local.png)
 
 In Local Inference mode, the complete detection process is performed within
 the user's browser. The user provides the text through the React interface,
@@ -70,7 +70,7 @@ resulting predictions are returned to the frontend and presented to the user.
 
 In Backend Inference mode, the React frontend communicates with the FastAPI backend through a REST API. The backend is responsible for processing the input and executing the detection models.
 
-![Backend Inference Architecture](media/aidext2_arch_backend.png)
+![Backend Inference Architecture](media/arq_website_backend_up.png)
 
 In Backend Inference mode, the frontend communicates with the FastAPI
 backend through a REST API. The user provides the text through the React

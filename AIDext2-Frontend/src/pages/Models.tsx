@@ -25,6 +25,10 @@ const navGroups: { label: string; items: NavItem[] }[] = [
 
 export default function Models() {
   const [activeId, setActiveId] = useState('overview')
+  const [navOpen, setNavOpen] = useState(false)
+
+  const currentLabel =
+    navGroups.flatMap((g) => g.items).find((i) => i.id === activeId)?.label ?? 'Sections'
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -49,9 +53,16 @@ export default function Models() {
   return (
     <div className="docs-shell">
 
-      {/* ───────────────── Sidebar ───────────────── */}
+      <button
+        className="docs-mobile-toggle"
+        onClick={() => setNavOpen((o) => !o)}
+        aria-expanded={navOpen}
+      >
+        <span>{currentLabel}</span>
+        <i className={`ti ti-chevron-down docs-toggle-chevron ${navOpen ? 'open' : ''}`} />
+      </button>
 
-      <aside className="docs-sidebar">
+      <aside className={`docs-sidebar ${navOpen ? 'open' : ''}`}>
 
         {navGroups.map((group) => (
           <div className="docs-nav-group" key={group.label}>
@@ -67,6 +78,7 @@ export default function Models() {
                 className={`docs-nav-item ${
                   activeId === item.id ? 'active' : ''
                 }`}
+                onClick={() => setNavOpen(false)}
               >
                 <i className={`ti ${item.icon}`} aria-hidden="true" />
                 {item.label}
@@ -198,7 +210,7 @@ export default function Models() {
 
         {/* ───────────────── Features ───────────────── */}
 
-        <section id="extracted_features">
+        <section className="docs-section" id="extracted_features">
 
           <div className="docs-eyebrow">
               Features
