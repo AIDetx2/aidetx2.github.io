@@ -1,5 +1,10 @@
+// AIDetx2 - Web interface for AI-generated text detection.
+// Copyright (C) 2026 Diogo Silva
+// Licensed under the GNU GPL-3.0-or-later.
+// See the LICENSE file for details.
 import { useState } from "react";
 import "./ModelModal.css";
+import InfoTooltip from "../InfoTooltip/InfoTooltip.tsx";
 
 interface Model {
   id: string;
@@ -7,6 +12,7 @@ interface Model {
   description: string;
   badge?: string;
   category: "ml" | "dl";
+  note?: string;
 }
 
 const MODELS: Model[] = [
@@ -22,11 +28,12 @@ const MODELS: Model[] = [
     description: "Detect if a text is human or AI, if it is AI, the model that generated it.",
     category: "ml",
   },
-  {
+   {
     id: "model",
     name: "MODEL DETECTION",
     description: "Detect the model that generated the text",
     category: "ml",
+    note: "Assumes the input text is already AI-generated — results only identify which model, not whether it's AI or human.",
   },
   {
     id: "binary",
@@ -45,6 +52,7 @@ const MODELS: Model[] = [
     name: "MODEL DETECTION",
     description: "Detect the model that generated the text",
     category: "dl",
+    note: "Assumes the input text is already AI-generated — results only identify which model, not whether it's AI or human.",
   },
 ];
 
@@ -109,11 +117,21 @@ export default function ModelModal({ currentModel, onSelect }: ModelModalProps) 
               {filteredModels.map((model) => (
                 <div
                   key={model.id}
-                  className={`model-card ${selected === model.id ? "model-card--selected" : ""}`}
-                  onClick={() => handleSelect(model.id,model.category)}
+                  className={`model-card ${
+                    category === "ml" && selected === model.id
+                      ? "model-card--selected"
+                      : ""
+                  } ${category === "dl" ? "model-card--disabled" : ""}`}
+                  onClick={category === "ml"
+                    ? () => handleSelect(model.id, model.category)
+                    : undefined
+                  }
                 >
                   <div className="model-card-top">
                     <span className="model-card-name">{model.name}</span>
+                    {model.id === "model" && (
+                      <InfoTooltip text="This mode assumes the input text is already AI-generated. It identifies which model most likely generated it, and does not evaluate whether the text is human or AI." />
+                    )}
                     {model.badge && (
                       <span className={`model-card-badge model-card-badge--${model.badge.toLowerCase()}`}>
                         {model.badge}
@@ -121,12 +139,18 @@ export default function ModelModal({ currentModel, onSelect }: ModelModalProps) 
                     )}
                   </div>
                   <p className="model-card-desc">{model.description}</p>
-                  {selected === model.id && (
+                  {category === "ml" && selected === model.id && (
                     <span className="model-card-check">✓</span>
                   )}
                 </div>
               ))}
             </div>
+
+            {category === "dl" && (
+              <div className="coming-soon">
+                🚀 Deep Learning models are coming soon.
+              </div>
+            )}
 
           </div>
         </div>

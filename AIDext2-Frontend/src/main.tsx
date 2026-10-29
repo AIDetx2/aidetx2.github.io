@@ -1,10 +1,10 @@
-import { StrictMode } from 'react'
+// AIDetx2 - Web interface for AI-generated text detection.
+// Copyright (C) 2026 Diogo Silva
+// Licensed under the GNU GPL-3.0-or-later.
+// See the LICENSE file for details.
 import { createRoot } from 'react-dom/client'
-import './pages/Home.css'
 import App from './App.tsx'
-//import Home from './pages/Home.tsx'
-//import TextScanner from './components/TextClassifierBox/TextClassifierBox.tsx'
-//import Navbar from './components/Navbar/Navbar.tsx'
+import { ModeProvider } from "./context/ModeContext";
 
 {/* <StrictMode>
   <Navbar/>
@@ -12,8 +12,12 @@ import App from './App.tsx'
   <Home/>
 </StrictMode>, */}
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+{/* <StrictMode>
     <App/>
-  </StrictMode>
+  </StrictMode> */}
+
+createRoot(document.getElementById('root')!).render(
+  <ModeProvider>
+    <App />
+  </ModeProvider>
 )
