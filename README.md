@@ -235,4 +235,4 @@ dist/
 
 ## License
 
-See the repository license for information about the use and distribution of this project.
+This project is licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later). See the [LICENSE](LICENSE) file for details.

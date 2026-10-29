@@ -1,3 +1,7 @@
+// AIDetx2 - Web interface for AI-generated text detection.
+// Copyright (C) 2026 Diogo Silva
+// Licensed under the GNU GPL-3.0-or-later.
+// See the LICENSE file for details.
 import { useState, useRef, useEffect, type ChangeEvent, type DragEvent } from "react";
 import './TextClassifierBox.css'
 import ModelModal from "../ModelModal/ModelModal.tsx";
@@ -424,10 +428,10 @@ export default function TextScanner() {
   
 
   return (
-    <div style={{ fontFamily: "sans-serif", maxWidth: 1700, margin: "0 auto", padding: "1.5rem" }}>
+    <div className="scanner-root">
 
       {/* Top bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1.25rem" }}>
+      <div className="scanner-topbar">
         <ModelModal
           currentModel={selectedModel?.id ?? ""}
           onSelect={(modelId, category) => {
@@ -494,13 +498,7 @@ export default function TextScanner() {
             ⚠ Please select a model before scanning
           </span>
         )}
-        <div
-          style={{
-            marginLeft: "auto",
-            display: "flex",
-            gap: 10,
-          }}
-        >
+        <div className="scanner-actions">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -535,7 +533,7 @@ export default function TextScanner() {
 
       {scanResponse && overall && segments.length > 0 ? (
         /* ── RESULTS VIEW ── */
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "1.5rem", alignItems: "start" }}>
+        <div className="results-grid">
 
           <SegmentTooltip
             segments={segments}
@@ -545,7 +543,7 @@ export default function TextScanner() {
             onSegmentSelect={setSelectedSeg}
             selectedSeg={selectedSeg}
           />
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div className="results-side">
 
             {/* Metrics panel */}
             <div className="metrics-panel">
